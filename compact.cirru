@@ -7,11 +7,13 @@
     |app.comp.container $ {}
       :ns $ quote
         ns app.comp.container $ :require ([] respo-ui.core :as ui)
+          [] respo.util.format :refer $ [] hsl
           [] respo.core :refer $ [] defcomp defeffect <> >> div button textarea span input
           [] respo.comp.space :refer $ [] =<
           [] reel.comp.reel :refer $ [] comp-reel
           [] respo-md.comp.md :refer $ [] comp-md
           [] app.config :refer $ [] dev?
+          [] respo.comp.inspect :refer $ [] comp-inspect
       :defs $ {}
         |comp-container $ quote
           defcomp comp-container (reel)
@@ -22,23 +24,74 @@
                 state $ either (:data states)
                   {} $ :content "\""
               div
-                {} $ :style (merge ui/global ui/row)
-                textarea $ {}
-                  :value $ :content state
-                  :placeholder "\"Content"
-                  :style $ merge ui/expand ui/textarea
-                    {} $ :height 320
-                  :on-input $ fn (e d!)
-                    d! cursor $ assoc state :content (:value e)
-                =< 8 nil
+                {} $ :style (merge ui/global ui/fullscreen ui/column)
+                comp-header $ >> states :header
                 div
-                  {} $ :style ui/expand
-                  comp-md "|This is some content with `code`"
-                  =< |8px nil
-                  button $ {} (:style ui/button) (:inner-text "\"Run")
-                    :on-click $ fn (e d!)
-                      println $ :content state
+                  {} $ :style
+                    merge ui/expand $ {} (:padding 6)
+                  , & $ ->> (:rules store)
+                    map-indexed $ fn (idx rule) (comp-rule-card idx rule)
                 when dev? $ comp-reel (>> states :reel) reel ({})
+        |comp-header $ quote
+          defn comp-header (states)
+            let
+                cursor $ :cursor states
+                state $ either (:data states) ({})
+              div
+                {} $ :style
+                  merge ui/row-middle $ {} (:height 40)
+                    :border-bottom $ str "\"1px solid " (hsl 0 0 90)
+                    :padding "\"0 8px"
+                <> "\"Life Patterns" $ {} (:font-family ui/font-fancy)
+                =< 8 nil
+                button $ {} (:inner-text "\"Add") (:style ui/button)
+                  :on-click $ fn (e d!) (d! :add-rule nil)
+        |comp-rule-card $ quote
+          defn comp-rule-card (idx rule)
+            div
+              {}
+                :style $ merge ui/column
+                  {} (:margin "\"10px 6px")
+                    :border $ str "\"1px solid " (hsl 0 0 90)
+                    :display :inline-flex
+                :draggable true
+                :on-dragstart $ fn (e d!)
+                  -> event .-dataTransfer $ .setData "\"text" (str idx)
+                :on-dragover $ fn (e d!)
+                  .preventDefault $ :event e
+                :on-drop $ fn (e d!)
+                  let
+                      event $ :event e
+                    .preventDefault event
+                    d! :move-rule $ []
+                      js/parseInt $ -> event .-dataTransfer (.getData "\"text")
+                      , idx
+              div
+                {} $ :style
+                  {} (:width 80) (:height 80)
+                , & $ ->> (range 9)
+                  map $ fn (pos)
+                    div $ {}
+                      :style $ {} (:width 20) (:height 20) (:display :inline-block) (:margin 2)
+                        :border $ str "\"1px solid " (hsl 0 0 90)
+                        :background-color $ if
+                          get-in rule $ [] :rule pos
+                          hsl 0 0 40
+                          hsl 0 0 90
+                        :cursor :pointer
+                      :on-click $ fn (e d!)
+                        d! :update-rule $ [] idx pos
+              div
+                {} $ :style
+                  merge ui/row-parted $ {} (:padding "\"0 8px")
+                <> (str "\"rule " idx)
+                  {} (:font-family ui/font-fancy)
+                    :color $ hsl 0 0 80
+                span $ {} (:inner-text "\"×")
+                  :style $ {}
+                    :color $ hsl 0 90 70
+                    :cursor :pointer
+                  :on-click $ fn (e d!) (d! :rm-rule idx)
       :proc $ quote ()
     |app.config $ {}
       :ns $ quote (ns app.config)
@@ -51,7 +104,7 @@
             :else false
         |dev? $ quote (def dev? true)
         |site $ quote
-          def site $ {} (:dev-ui "\"http://localhost:8100/main-fonts.css") (:release-ui "\"http://cdn.tiye.me/favored-fonts/main-fonts.css") (:cdn-url "\"http://cdn.tiye.me/calcit-workflow/") (:title "\"Calcit") (:icon "\"http://cdn.tiye.me/logo/mvc-works.png") (:storage-key "\"workflow")
+          def site $ {} (:dev-ui "\"http://localhost:8100/main-fonts.css") (:release-ui "\"http://cdn.tiye.me/favored-fonts/main-fonts.css") (:cdn-url "\"http://cdn.tiye.me/calcit-workflow/") (:title "\"Calcit") (:icon "\"http://cdn.tiye.me/logo/mvc-works.png") (:storage-key "\"life-patterns")
       :proc $ quote ()
     |app.main $ {}
       :ns $ quote
@@ -85,10 +138,10 @@
             if ssr? $ render-app! realize-ssr!
             render-app! render!
             add-watch *reel :changes $ fn (reel prev) (render-app! render!)
-            listen-devtools! |a dispatch!
-            .addEventListener js/window |beforeunload $ fn (event) (persist-storage!)
-            repeat! 60 persist-storage!
-            let
+            listen-devtools! |k dispatch!
+            ; .addEventListener js/window |beforeunload $ fn (event) (persist-storage!)
+            ; repeat! 60 persist-storage!
+            ; let
                 raw $ .getItem js/localStorage (:storage-key config/site)
               when (some? raw)
                 dispatch! :hydrate-storage $ extract-cirru-edn (js/JSON.parse raw)
@@ -102,7 +155,7 @@
           defn snippets () $ println config/cdn?
         |render-app! $ quote
           defn render-app! (renderer)
-            renderer mount-target (comp-container @*reel) (\ dispatch! % %2)
+            renderer mount-target (comp-container @*reel) dispatch!
         |reload! $ quote
           defn reload! () (remove-watch *reel :changes) (clear-cache!)
             add-watch *reel :changes $ fn (reel prev) (render-app! render!)
@@ -117,16 +170,40 @@
           def store $ {}
             :states $ {}
               :cursor $ []
+            :rules $ do %rule-item ([])
+        |%rule-item $ quote (defrecord %rule-item :rule :error)
       :proc $ quote ()
     |app.updater $ {}
       :ns $ quote
         ns app.updater $ :require
           [] respo.cursor :refer $ [] update-states
+          [] app.schema :as schema
       :defs $ {}
         |updater $ quote
           defn updater (store op data op-id op-time)
-            case op
+            case-default op
+              do (println "\"unknown op" op) store
               :states $ update-states store data
+              :add-rule $ update store :rules
+                fn (rules)
+                  conj rules $ %{} schema/%rule-item
+                    :rule $ repeat 9 false
+                    :error nil
+              :rm-rule $ do
+                assert "\"remove rule via index" $ number? data
+                update store :rules $ fn (rules) (dissoc rules data)
+              :move-rule $ let[] (from to) data
+                update store :rules $ fn (rules)
+                  cond
+                      < to from
+                      assoc-before (dissoc rules from) to $ nth rules from
+                    (> to from)
+                      dissoc
+                        assoc-after rules to $ nth rules from
+                        , from
+                    true rules
+              :update-rule $ let[] (idx pos) data
+                update-in store ([] :rules idx :rule pos) not
               :hydrate-storage data
               op store
       :proc $ quote ()
