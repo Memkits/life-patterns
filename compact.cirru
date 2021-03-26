@@ -26,11 +26,21 @@
               div
                 {} $ :style (merge ui/global ui/fullscreen ui/column)
                 comp-header $ >> states :header
-                div
-                  {} $ :style
-                    merge ui/expand $ {} (:padding 6)
-                  , & $ ->> (:rules store)
-                    map-indexed $ fn (idx rule) (comp-rule-card idx rule)
+                div ({})
+                  div
+                    {} $ :style
+                      merge ui/row $ {} (:padding "\"0 10px")
+                    <> "\"Code:"
+                    =< 8 nil
+                    div $ {}
+                      :inner-text $ encode-rules (:rules store)
+                      :style $ merge ui/expand
+                        {} (:font-family ui/font-code) (:font-size 10) (:line-height "\"16px") (:word-break :break-all)
+                  div
+                    {} $ :style
+                      merge ui/expand $ {} (:padding "\"0 6px")
+                    , & $ ->> (:rules store)
+                      map-indexed $ fn (idx rule) (comp-rule-card idx rule)
                 when dev? $ comp-reel (>> states :reel) reel ({})
         |comp-header $ quote
           defn comp-header (states)
@@ -56,7 +66,7 @@
                     :display :inline-flex
                 :draggable true
                 :on-dragstart $ fn (e d!)
-                  -> event .-dataTransfer $ .setData "\"text" (str idx)
+                  -> (:event e) .-dataTransfer $ .setData "\"text" (str idx)
                 :on-dragover $ fn (e d!)
                   .preventDefault $ :event e
                 :on-drop $ fn (e d!)
@@ -84,14 +94,49 @@
               div
                 {} $ :style
                   merge ui/row-parted $ {} (:padding "\"0 8px")
-                <> (str "\"rule " idx)
+                <> (str idx)
                   {} (:font-family ui/font-fancy)
                     :color $ hsl 0 0 80
+                div $ {}
+                  :style $ {} (:width 14) (:height 14) (:cursor :pointer)
+                    :background-color $ if
+                      get-in rule $ [] :result
+                      hsl 0 0 40
+                      hsl 0 0 90
+                  :on-click $ fn (e d!) (d! :update-rule-result idx)
                 span $ {} (:inner-text "\"×")
                   :style $ {}
                     :color $ hsl 0 90 70
                     :cursor :pointer
                   :on-click $ fn (e d!) (d! :rm-rule idx)
+        |encode-rules $ quote
+          defn encode-rules (rules ? base)
+            let
+                code-array $ either base base-rule
+              if (empty? rules) (join-str "\"" code-array)
+                recur (rest rules)
+                  let
+                      r0 $ first rules
+                    if (:result r0)
+                      assoc code-array
+                        calc-code-idx $ :rule r0
+                        , 1
+                      , code-array
+        |base-rule $ quote
+          def base-rule $ repeat (pow 2 9) 0
+        |calc-code-idx $ quote
+          defn calc-code-idx (xs)
+            assert "\"size of rule is 9" $ = 9 (count xs)
+            +
+              * (nth xs 0) (pow 2 8)
+              * (nth xs 1) (pow 2 7)
+              * (nth xs 2) (pow 2 6)
+              * (nth xs 3) (pow 2 5)
+              * (nth xs 4) (pow 2 4)
+              * (nth xs 5) (pow 2 3)
+              * (nth xs 6) (pow 2 2)
+              * (nth xs 7) (pow 2 1)
+              * (nth xs 8) (pow 2 0)
       :proc $ quote ()
     |app.config $ {}
       :ns $ quote (ns app.config)
@@ -171,7 +216,7 @@
             :states $ {}
               :cursor $ []
             :rules $ do %rule-item ([])
-        |%rule-item $ quote (defrecord %rule-item :rule :error)
+        |%rule-item $ quote (defrecord %rule-item :rule :result :error)
       :proc $ quote ()
     |app.updater $ {}
       :ns $ quote
@@ -188,6 +233,7 @@
                 fn (rules)
                   conj rules $ %{} schema/%rule-item
                     :rule $ repeat 9 false
+                    :result true
                     :error nil
               :rm-rule $ do
                 assert "\"remove rule via index" $ number? data
@@ -204,6 +250,7 @@
                     true rules
               :update-rule $ let[] (idx pos) data
                 update-in store ([] :rules idx :rule pos) not
+              :update-rule-result $ update-in store ([] :rules data :result) not
               :hydrate-storage data
               op store
       :proc $ quote ()
