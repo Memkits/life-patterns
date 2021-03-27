@@ -14,6 +14,10 @@
           [] respo-md.comp.md :refer $ [] comp-md
           [] app.config :refer $ [] dev?
           [] respo.comp.inspect :refer $ [] comp-inspect
+          [] memof.alias :refer $ [] memof-call
+          "\"./bitwise" :refer $ pick-bit-at
+          [] "\"copy-text-to-clipboard" :as copy-text
+          [] app.updater :refer $ [] count-bits
       :defs $ {}
         |comp-container $ quote
           defcomp comp-container (reel)
@@ -22,76 +26,118 @@
                 states $ :states store
                 cursor $ either (:cursor states) ([])
                 state $ either (:data states)
-                  {} $ :content "\""
+                  {} $ :filter-size nil
               div
                 {} $ :style (merge ui/global ui/fullscreen ui/column)
-                comp-header $ >> states :header
                 div
                   {} $ :style
-                    merge ui/expand $ {} (:padding 6)
-                  , & $ ->> (:rules store)
-                    map-indexed $ fn (idx rule) (comp-rule-card idx rule)
+                    merge ui/row-parted $ {} (:padding "\"2px 8px")
+                  <> "\"Life Patterns" $ {} (:font-family ui/font-fancy)
+                  =< 8 nil
+                  div $ {}
+                    :inner-text $ encode-rules (:code-array store)
+                    :style $ merge ui/expand
+                      {} (:font-family ui/font-code) (:font-size 8) (:line-height "\"10px") (:word-break :break-all) (:cursor :pointer)
+                    :on-click $ fn (e d!)
+                      copy-text/default $ encode-rules (:code-array store)
+                      let
+                          t $ -> e :event .-target
+                          r $ js/document.createRange
+                          s $ js/getSelection
+                        .selectNode r t
+                        .removeAllRanges s
+                        .addRange s r
+                div
+                  {} $ :style
+                    merge ui/row-middle $ {} (:padding "\"4 8px")
+                  memof-call comp-filter (:filter-size state)
+                    fn (n d!)
+                      d! cursor $ assoc state :filter-size n
+                  =< 32 nil
+                  button $ {} (:style ui/button) (:inner-text "\"Select All")
+                    :on-click $ fn (e d!)
+                      d! :select $ :filter-size state
+                  =< 16 nil
+                  button $ {} (:style ui/button) (:inner-text "\"Uncheck")
+                    :on-click $ fn (e d!)
+                      d! :unselect $ :filter-size state
+                div
+                  {} $ :style
+                    merge ui/expand $ {} (:padding "\"0 6px") (:padding-bottom 120) (:padding-top 20)
+                      :border-top $ str "\"1px solid " (hsl 0 0 90)
+                  , & $ ->> (:code-array store)
+                    map-indexed $ fn (idx v) ([] idx v)
+                    filter $ fn (pair)
+                      let[] (idx v) pair $ if
+                        nil? $ :filter-size state
+                        , true
+                          = (count-bits idx) (:filter-size state)
+                    map $ fn (pair)
+                      let[] (idx v) pair $ memof-call comp-rule-card idx v
                 when dev? $ comp-reel (>> states :reel) reel ({})
-        |comp-header $ quote
-          defn comp-header (states)
-            let
-                cursor $ :cursor states
-                state $ either (:data states) ({})
-              div
-                {} $ :style
-                  merge ui/row-middle $ {} (:height 40)
-                    :border-bottom $ str "\"1px solid " (hsl 0 0 90)
-                    :padding "\"0 8px"
-                <> "\"Life Patterns" $ {} (:font-family ui/font-fancy)
-                =< 8 nil
-                button $ {} (:inner-text "\"Add") (:style ui/button)
-                  :on-click $ fn (e d!) (d! :add-rule nil)
         |comp-rule-card $ quote
-          defn comp-rule-card (idx rule)
+          defn comp-rule-card (idx result)
             div
               {}
-                :style $ merge ui/column
-                  {} (:margin "\"10px 6px")
+                :style $ merge
+                  {} (:margin-top 4) (:margin-left 4)
                     :border $ str "\"1px solid " (hsl 0 0 90)
-                    :display :inline-flex
-                :draggable true
-                :on-dragstart $ fn (e d!)
-                  -> event .-dataTransfer $ .setData "\"text" (str idx)
-                :on-dragover $ fn (e d!)
-                  .preventDefault $ :event e
-                :on-drop $ fn (e d!)
-                  let
-                      event $ :event e
-                    .preventDefault event
-                    d! :move-rule $ []
-                      js/parseInt $ -> event .-dataTransfer (.getData "\"text")
-                      , idx
+                    :display :inline-block
+                    :width 39
+                    :height 39
+                :on-click $ fn (e d!) (d! :toggle idx)
+              , & $ ->> (range 9)
+                map $ fn (pos)
+                  div $ {}
+                    :style $ {} (:width 11) (:height 11) (:display :inline-block) (:margin-top 1) (:margin-left 1)
+                      :background-color $ if
+                        = 1 $ pick-bit-at idx (- 8 pos)
+                        hsl 0 0 40
+                        hsl 0 0 90
+                      :opacity $ if result 1 0.2
+                      :cursor :pointer
+        |encode-rules $ quote
+          defn encode-rules (codes)
+            ->> codes
+              map $ fn (x) (if x "\"1" "\"_")
+              join-str "\""
+        |base-rule $ quote
+          def base-rule $ repeat (pow 2 9) 0
+        |calc-code-idx $ quote
+          defn calc-code-idx (xs)
+            assert "\"size of rule is 9" $ = 9 (count xs)
+            +
+              * (nth xs 0) (pow 2 8)
+              * (nth xs 1) (pow 2 7)
+              * (nth xs 2) (pow 2 6)
+              * (nth xs 3) (pow 2 5)
+              * (nth xs 4) (pow 2 4)
+              * (nth xs 5) (pow 2 3)
+              * (nth xs 6) (pow 2 2)
+              * (nth xs 7) (pow 2 1)
+              * (nth xs 8) (pow 2 0)
+        |comp-filter $ quote
+          defcomp comp-filter (filter-size on-change)
+            div
+              {}
+                :style $ merge ui/row-middle
+                  {} $ :font-family ui/font-fancy
+                :on-click $ fn (e d!) (on-change nil d!)
               div
                 {} $ :style
-                  {} (:width 80) (:height 80)
-                , & $ ->> (range 9)
-                  map $ fn (pos)
-                    div $ {}
-                      :style $ {} (:width 20) (:height 20) (:display :inline-block) (:margin 2)
-                        :border $ str "\"1px solid " (hsl 0 0 90)
-                        :background-color $ if
-                          get-in rule $ [] :rule pos
-                          hsl 0 0 40
-                          hsl 0 0 90
-                        :cursor :pointer
-                      :on-click $ fn (e d!)
-                        d! :update-rule $ [] idx pos
-              div
-                {} $ :style
-                  merge ui/row-parted $ {} (:padding "\"0 8px")
-                <> (str "\"rule " idx)
-                  {} (:font-family ui/font-fancy)
-                    :color $ hsl 0 0 80
-                span $ {} (:inner-text "\"×")
-                  :style $ {}
-                    :color $ hsl 0 90 70
-                    :cursor :pointer
-                  :on-click $ fn (e d!) (d! :rm-rule idx)
+                  merge ui/center $ {} (:width 16) (:margin "\"2px 4px") (:cursor :pointer)
+                <> "\"All"
+              , & $ ->> (range 9)
+                map $ fn (n)
+                  div
+                    {}
+                      :style $ merge ui/center
+                        {} (:width 16) (:height 20) (:margin "\"2px 4px")
+                          :background-color $ hsl 0 0 96
+                          :border-radius "\"4px"
+                          :cursor :pointer
+                      :on-click $ fn (e d!) (on-change n d!)
+                    <> $ str n
       :proc $ quote ()
     |app.config $ {}
       :ns $ quote (ns app.config)
@@ -170,40 +216,45 @@
           def store $ {}
             :states $ {}
               :cursor $ []
-            :rules $ do %rule-item ([])
-        |%rule-item $ quote (defrecord %rule-item :rule :error)
+            :code-array $ repeat (pow 2 9) false
       :proc $ quote ()
     |app.updater $ {}
       :ns $ quote
         ns app.updater $ :require
           [] respo.cursor :refer $ [] update-states
           [] app.schema :as schema
+          "\"./bitwise" :refer $ pick-bit-at
       :defs $ {}
         |updater $ quote
           defn updater (store op data op-id op-time)
             case-default op
               do (println "\"unknown op" op) store
               :states $ update-states store data
-              :add-rule $ update store :rules
-                fn (rules)
-                  conj rules $ %{} schema/%rule-item
-                    :rule $ repeat 9 false
-                    :error nil
-              :rm-rule $ do
-                assert "\"remove rule via index" $ number? data
-                update store :rules $ fn (rules) (dissoc rules data)
-              :move-rule $ let[] (from to) data
-                update store :rules $ fn (rules)
-                  cond
-                      < to from
-                      assoc-before (dissoc rules from) to $ nth rules from
-                    (> to from)
-                      dissoc
-                        assoc-after rules to $ nth rules from
-                        , from
-                    true rules
-              :update-rule $ let[] (idx pos) data
-                update-in store ([] :rules idx :rule pos) not
+              :toggle $ update-in store ([] :code-array data) not
+              :select $ update store :code-array
+                fn (xs)
+                  if (nil? data)
+                    repeat (pow 2 9) true
+                    map-indexed
+                      fn (idx x)
+                        if
+                          = data $ count-bits idx
+                          , true x
+                      , xs
+              :unselect $ update store :code-array
+                fn (xs)
+                  if (nil? data)
+                    repeat (pow 2 9) false
+                    map-indexed
+                      fn (idx x)
+                        if
+                          = data $ count-bits idx
+                          , false x
+                      , xs
               :hydrate-storage data
-              op store
+        |count-bits $ quote
+          defn count-bits (n)
+            + & $ map
+              fn (x) (pick-bit-at n x)
+              range 9
       :proc $ quote ()
