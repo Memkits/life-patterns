@@ -14,6 +14,9 @@
           [] respo-md.comp.md :refer $ [] comp-md
           [] app.config :refer $ [] dev?
           [] respo.comp.inspect :refer $ [] comp-inspect
+          [] memof.alias :refer $ [] memof-call
+          "\"./bitwise" :refer $ pick-bit-at
+          [] "\"copy-text-to-clipboard" :as copy-text
       :defs $ {}
         |comp-container $ quote
           defcomp comp-container (reel)
@@ -25,103 +28,57 @@
                   {} $ :content "\""
               div
                 {} $ :style (merge ui/global ui/fullscreen ui/column)
-                comp-header $ >> states :header
-                div ({})
-                  div
-                    {} $ :style
-                      merge ui/row $ {} (:padding "\"0 10px")
-                    <> "\"Code:"
-                    =< 8 nil
-                    div $ {}
-                      :inner-text $ encode-rules (:rules store)
-                      :style $ merge ui/expand
-                        {} (:font-family ui/font-code) (:font-size 10) (:line-height "\"16px") (:word-break :break-all)
-                  div
-                    {} $ :style
-                      merge ui/expand $ {} (:padding "\"0 6px")
-                    , & $ ->> (:rules store)
-                      map-indexed $ fn (idx rule) (comp-rule-card idx rule)
+                div
+                  {} $ :style
+                    merge ui/row-parted $ {} (:padding "\"2px 8px")
+                  <> "\"Life Patterns" $ {} (:font-family ui/font-fancy)
+                  =< 8 nil
+                  div $ {}
+                    :inner-text $ encode-rules (:code-array store)
+                    :style $ merge ui/expand
+                      {} (:font-family ui/font-code) (:font-size 8) (:line-height "\"10px") (:word-break :break-all) (:cursor :pointer)
+                    :on-click $ fn (e d!)
+                      copy-text/default $ encode-rules (:code-array store)
+                      let
+                          t $ -> e :event .-target
+                          r $ js/document.createRange
+                          s $ js/getSelection
+                        .selectNode r t
+                        .removeAllRanges s
+                        .addRange s r
+                div
+                  {} $ :style
+                    merge ui/expand $ {} (:padding "\"0 6px") (:padding-bottom 120) (:padding-top 20)
+                      :border-top $ str "\"1px solid " (hsl 0 0 90)
+                  , & $ ->> (:code-array store)
+                    map-indexed $ fn (idx v) (memof-call comp-rule-card idx v)
                 when dev? $ comp-reel (>> states :reel) reel ({})
-        |comp-header $ quote
-          defn comp-header (states)
-            let
-                cursor $ :cursor states
-                state $ either (:data states) ({})
-              div
-                {} $ :style
-                  merge ui/row-middle $ {} (:height 40)
-                    :border-bottom $ str "\"1px solid " (hsl 0 0 90)
-                    :padding "\"0 8px"
-                <> "\"Life Patterns" $ {} (:font-family ui/font-fancy)
-                =< 8 nil
-                button $ {} (:inner-text "\"Add") (:style ui/button)
-                  :on-click $ fn (e d!) (d! :add-rule nil)
         |comp-rule-card $ quote
-          defn comp-rule-card (idx rule)
+          defn comp-rule-card (idx result)
             div
               {}
-                :style $ merge ui/column
-                  {} (:margin "\"10px 6px")
+                :style $ merge
+                  {} (:margin-top 4) (:margin-left 4)
                     :border $ str "\"1px solid " (hsl 0 0 90)
-                    :display :inline-flex
-                :draggable true
-                :on-dragstart $ fn (e d!)
-                  -> (:event e) .-dataTransfer $ .setData "\"text" (str idx)
-                :on-dragover $ fn (e d!)
-                  .preventDefault $ :event e
-                :on-drop $ fn (e d!)
-                  let
-                      event $ :event e
-                    .preventDefault event
-                    d! :move-rule $ []
-                      js/parseInt $ -> event .-dataTransfer (.getData "\"text")
-                      , idx
-              div
-                {} $ :style
-                  {} (:width 80) (:height 80)
-                , & $ ->> (range 9)
-                  map $ fn (pos)
-                    div $ {}
-                      :style $ {} (:width 20) (:height 20) (:display :inline-block) (:margin 2)
-                        :border $ str "\"1px solid " (hsl 0 0 90)
-                        :background-color $ if
-                          get-in rule $ [] :rule pos
-                          hsl 0 0 40
-                          hsl 0 0 90
-                        :cursor :pointer
-                      :on-click $ fn (e d!)
-                        d! :update-rule $ [] idx pos
-              div
-                {} $ :style
-                  merge ui/row-parted $ {} (:padding "\"0 8px")
-                <> (str idx)
-                  {} (:font-family ui/font-fancy)
-                    :color $ hsl 0 0 80
-                div $ {}
-                  :style $ {} (:width 14) (:height 14) (:cursor :pointer)
-                    :background-color $ if
-                      get-in rule $ [] :result
-                      hsl 0 0 40
-                      hsl 0 0 90
-                  :on-click $ fn (e d!) (d! :update-rule-result idx)
-                span $ {} (:inner-text "\"×")
-                  :style $ {}
-                    :color $ hsl 0 90 70
-                    :cursor :pointer
-                  :on-click $ fn (e d!) (d! :rm-rule idx)
+                    :display :inline-block
+                    :width 39
+                    :height 39
+                :on-click $ fn (e d!) (d! :toggle idx)
+              , & $ ->> (range 9)
+                map $ fn (pos)
+                  div $ {}
+                    :style $ {} (:width 11) (:height 11) (:display :inline-block) (:margin-top 1) (:margin-left 1)
+                      :background-color $ if
+                        = 1 $ pick-bit-at idx (- 8 pos)
+                        hsl 0 0 40
+                        hsl 0 0 90
+                      :opacity $ if result 1 0.2
+                      :cursor :pointer
         |encode-rules $ quote
-          defn encode-rules (rules ? base)
-            let
-                code-array $ either base base-rule
-              if (empty? rules) (join-str "\"" code-array)
-                recur (rest rules)
-                  let
-                      r0 $ first rules
-                    if (:result r0)
-                      assoc code-array
-                        calc-code-idx $ :rule r0
-                        , 1
-                      , code-array
+          defn encode-rules (codes)
+            ->> codes
+              map $ fn (x) (if x "\"1" "\"_")
+              join-str "\""
         |base-rule $ quote
           def base-rule $ repeat (pow 2 9) 0
         |calc-code-idx $ quote
@@ -215,8 +172,7 @@
           def store $ {}
             :states $ {}
               :cursor $ []
-            :rules $ do %rule-item ([])
-        |%rule-item $ quote (defrecord %rule-item :rule :result :error)
+            :code-array $ repeat (pow 2 9) false
       :proc $ quote ()
     |app.updater $ {}
       :ns $ quote
@@ -229,28 +185,7 @@
             case-default op
               do (println "\"unknown op" op) store
               :states $ update-states store data
-              :add-rule $ update store :rules
-                fn (rules)
-                  conj rules $ %{} schema/%rule-item
-                    :rule $ repeat 9 false
-                    :result true
-                    :error nil
-              :rm-rule $ do
-                assert "\"remove rule via index" $ number? data
-                update store :rules $ fn (rules) (dissoc rules data)
-              :move-rule $ let[] (from to) data
-                update store :rules $ fn (rules)
-                  cond
-                      < to from
-                      assoc-before (dissoc rules from) to $ nth rules from
-                    (> to from)
-                      dissoc
-                        assoc-after rules to $ nth rules from
-                        , from
-                    true rules
-              :update-rule $ let[] (idx pos) data
-                update-in store ([] :rules idx :rule pos) not
-              :update-rule-result $ update-in store ([] :rules data :result) not
+              :toggle $ update-in store ([] :code-array data) not
               :hydrate-storage data
               op store
       :proc $ quote ()
