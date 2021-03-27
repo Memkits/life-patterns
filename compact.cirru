@@ -17,6 +17,7 @@
           [] memof.alias :refer $ [] memof-call
           "\"./bitwise" :refer $ pick-bit-at
           [] "\"copy-text-to-clipboard" :as copy-text
+          [] app.updater :refer $ [] count-bits
       :defs $ {}
         |comp-container $ quote
           defcomp comp-container (reel)
@@ -25,7 +26,7 @@
                 states $ :states store
                 cursor $ either (:cursor states) ([])
                 state $ either (:data states)
-                  {} $ :content "\""
+                  {} $ :filter-size nil
               div
                 {} $ :style (merge ui/global ui/fullscreen ui/column)
                 div
@@ -48,10 +49,31 @@
                         .addRange s r
                 div
                   {} $ :style
+                    merge ui/row-middle $ {} (:padding "\"4 8px")
+                  memof-call comp-filter (:filter-size state)
+                    fn (n d!)
+                      d! cursor $ assoc state :filter-size n
+                  =< 32 nil
+                  button $ {} (:style ui/button) (:inner-text "\"Select All")
+                    :on-click $ fn (e d!)
+                      d! :select $ :filter-size state
+                  =< 16 nil
+                  button $ {} (:style ui/button) (:inner-text "\"Uncheck")
+                    :on-click $ fn (e d!)
+                      d! :unselect $ :filter-size state
+                div
+                  {} $ :style
                     merge ui/expand $ {} (:padding "\"0 6px") (:padding-bottom 120) (:padding-top 20)
                       :border-top $ str "\"1px solid " (hsl 0 0 90)
                   , & $ ->> (:code-array store)
-                    map-indexed $ fn (idx v) (memof-call comp-rule-card idx v)
+                    map-indexed $ fn (idx v) ([] idx v)
+                    filter $ fn (pair)
+                      let[] (idx v) pair $ if
+                        nil? $ :filter-size state
+                        , true
+                          = (count-bits idx) (:filter-size state)
+                    map $ fn (pair)
+                      let[] (idx v) pair $ memof-call comp-rule-card idx v
                 when dev? $ comp-reel (>> states :reel) reel ({})
         |comp-rule-card $ quote
           defn comp-rule-card (idx result)
@@ -94,6 +116,28 @@
               * (nth xs 6) (pow 2 2)
               * (nth xs 7) (pow 2 1)
               * (nth xs 8) (pow 2 0)
+        |comp-filter $ quote
+          defcomp comp-filter (filter-size on-change)
+            div
+              {}
+                :style $ merge ui/row-middle
+                  {} $ :font-family ui/font-fancy
+                :on-click $ fn (e d!) (on-change nil d!)
+              div
+                {} $ :style
+                  merge ui/center $ {} (:width 16) (:margin "\"2px 4px") (:cursor :pointer)
+                <> "\"All"
+              , & $ ->> (range 9)
+                map $ fn (n)
+                  div
+                    {}
+                      :style $ merge ui/center
+                        {} (:width 16) (:height 20) (:margin "\"2px 4px")
+                          :background-color $ hsl 0 0 96
+                          :border-radius "\"4px"
+                          :cursor :pointer
+                      :on-click $ fn (e d!) (on-change n d!)
+                    <> $ str n
       :proc $ quote ()
     |app.config $ {}
       :ns $ quote (ns app.config)
@@ -179,6 +223,7 @@
         ns app.updater $ :require
           [] respo.cursor :refer $ [] update-states
           [] app.schema :as schema
+          "\"./bitwise" :refer $ pick-bit-at
       :defs $ {}
         |updater $ quote
           defn updater (store op data op-id op-time)
@@ -186,6 +231,30 @@
               do (println "\"unknown op" op) store
               :states $ update-states store data
               :toggle $ update-in store ([] :code-array data) not
+              :select $ update store :code-array
+                fn (xs)
+                  if (nil? data)
+                    repeat (pow 2 9) true
+                    map-indexed
+                      fn (idx x)
+                        if
+                          = data $ count-bits idx
+                          , true x
+                      , xs
+              :unselect $ update store :code-array
+                fn (xs)
+                  if (nil? data)
+                    repeat (pow 2 9) false
+                    map-indexed
+                      fn (idx x)
+                        if
+                          = data $ count-bits idx
+                          , false x
+                      , xs
               :hydrate-storage data
-              op store
+        |count-bits $ quote
+          defn count-bits (n)
+            + & $ map
+              fn (x) (pick-bit-at n x)
+              range 9
       :proc $ quote ()

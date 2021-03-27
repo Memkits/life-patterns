@@ -2,9 +2,9 @@
 Life patterns
 ----
 
-> patterns editor for http://repo.memkits.org/random-lives/
+> patterns editor for [random-lives](http://repo.memkits.org/random-lives/).
 
-Demo _TODO_
+Demo http://repo.memkits.org/life-patterns/
 
 ### Usages
 
