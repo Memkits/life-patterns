@@ -26,7 +26,7 @@
                 states $ :states store
                 cursor $ either (:cursor states) ([])
                 state $ either (:data states)
-                  {} $ :filter-size nil
+                  %{} %container-state (:filter-size nil) (:has-center? true)
               div
                 {} $ :style (merge ui/global ui/fullscreen ui/column)
                 div
@@ -50,17 +50,19 @@
                 div
                   {} $ :style
                     merge ui/row-middle $ {} (:padding "\"4 8px")
-                  memof-call comp-filter (:filter-size state)
+                  memof-call comp-filter (:filter-size state) (:has-center? state)
                     fn (n d!)
                       d! cursor $ assoc state :filter-size n
+                    fn (v d!)
+                      d! cursor $ assoc state :has-center? v
                   =< 32 nil
                   button $ {} (:style ui/button) (:inner-text "\"Select All")
                     :on-click $ fn (e d!)
-                      d! :select $ :filter-size state
+                      d! :select $ [] (:filter-size state) (:has-center? state)
                   =< 16 nil
                   button $ {} (:style ui/button) (:inner-text "\"Uncheck")
                     :on-click $ fn (e d!)
-                      d! :unselect $ :filter-size state
+                      d! :unselect $ [] (:filter-size state) (:has-center? state)
                 div
                   {} $ :style
                     merge ui/expand $ {} (:padding "\"0 6px") (:padding-bottom 120) (:padding-top 20)
@@ -71,7 +73,10 @@
                       let[] (idx v) pair $ if
                         nil? $ :filter-size state
                         , true
-                          = (count-bits idx) (:filter-size state)
+                          and
+                            = (count-bits idx) (:filter-size state)
+                            = (:has-center? state)
+                              = 1 $ pick-bit-at idx 4
                     map $ fn (pair)
                       let[] (idx v) pair $ memof-call comp-rule-card idx v
                 when dev? $ comp-reel (>> states :reel) reel ({})
@@ -117,27 +122,38 @@
               * (nth xs 7) (pow 2 1)
               * (nth xs 8) (pow 2 0)
         |comp-filter $ quote
-          defcomp comp-filter (filter-size on-change)
+          defcomp comp-filter (filter-size has-center? on-change on-center)
             div
-              {}
-                :style $ merge ui/row-middle
-                  {} $ :font-family ui/font-fancy
-                :on-click $ fn (e d!) (on-change nil d!)
+              {} $ :style
+                merge ui/row-middle $ {} (:font-family ui/font-fancy) (:user-select :none)
               div
-                {} $ :style
-                  merge ui/center $ {} (:width 16) (:margin "\"2px 4px") (:cursor :pointer)
+                {}
+                  :style $ merge ui/center
+                    {} (:width 16) (:margin "\"2px 4px") (:cursor :pointer)
+                  :on-click $ fn (e d!) (on-change nil d!)
                 <> "\"All"
-              , & $ ->> (range 9)
-                map $ fn (n)
-                  div
-                    {}
-                      :style $ merge ui/center
-                        {} (:width 16) (:height 20) (:margin "\"2px 4px")
-                          :background-color $ hsl 0 0 96
-                          :border-radius "\"4px"
-                          :cursor :pointer
-                      :on-click $ fn (e d!) (on-change n d!)
-                    <> $ str n
+              , &
+                ->> (range 10)
+                  map $ fn (n)
+                    div
+                      {}
+                        :style $ merge ui/center
+                          {} (:width 16) (:height 20) (:margin "\"2px 4px")
+                            :background-color $ hsl 0 0 96
+                            :border-radius "\"4px"
+                            :cursor :pointer
+                        :on-click $ fn (e d!) (on-change n d!)
+                      <> $ str n
+                =< 8 nil
+                div
+                  {}
+                    :on-click $ fn (e d!)
+                      on-center (not has-center?) d!
+                    :style $ {}
+                      :color $ if has-center? (hsl 0 0 0) (hsl 0 0 70)
+                      :cursor :pointer
+                  <> "\"has-center?"
+        |%container-state $ quote (defrecord %container-state :filter-size :has-center?)
       :proc $ quote ()
     |app.config $ {}
       :ns $ quote (ns app.config)
@@ -233,22 +249,26 @@
               :toggle $ update-in store ([] :code-array data) not
               :select $ update store :code-array
                 fn (xs)
-                  if (nil? data)
+                  let[] (size has-center?) data $ if (nil? size)
                     repeat (pow 2 9) true
                     map-indexed
                       fn (idx x)
                         if
-                          = data $ count-bits idx
+                          and
+                            = size $ count-bits idx
+                            = has-center? $ = 1 (pick-bit-at idx 4)
                           , true x
                       , xs
               :unselect $ update store :code-array
                 fn (xs)
-                  if (nil? data)
+                  let[] (size has-center?) data $ if (nil? size)
                     repeat (pow 2 9) false
                     map-indexed
                       fn (idx x)
                         if
-                          = data $ count-bits idx
+                          and
+                            = size $ count-bits idx
+                            = has-center? $ = 1 (pick-bit-at idx 4)
                           , false x
                       , xs
               :hydrate-storage data
