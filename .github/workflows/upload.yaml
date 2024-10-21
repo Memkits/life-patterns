@@ -24,6 +24,7 @@ jobs:
     - name: "compiles to js"
       run: >
         caps --ci && cr --once js
+        && cp assets/bitwise.js js-out/
         && yarn && yarn vite build --base=./
 
     - name: Deploy to server
