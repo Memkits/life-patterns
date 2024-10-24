@@ -1,7 +1,7 @@
 
 {} (:package |app)
   :configs $ {} (:init-fn |app.main/main!) (:reload-fn |app.main/reload!) (:version |0.0.1)
-    :modules $ [] |respo.calcit/compact.cirru |lilac/compact.cirru |memof/compact.cirru |respo-ui.calcit/compact.cirru |respo-markdown.calcit/compact.cirru |reel.calcit/compact.cirru
+    :modules $ [] |respo.calcit/compact.cirru |lilac/compact.cirru |memof/compact.cirru |respo-ui.calcit/compact.cirru |respo-markdown.calcit/compact.cirru |reel.calcit/compact.cirru |alerts.calcit/
   :entries $ {}
   :files $ {}
     |app.comp.container $ %{} :FileEntry
@@ -34,26 +34,44 @@
                   cursor $ either (:cursor states) ([])
                   state $ either (:data states)
                     %{} %container-state (:filter-size nil) (:has-center? true)
+                  alert-plugin $ use-alert (>> states :alert)
+                    {} (:text nil)
+                      :card-class $ str-spaced css/font-code style-binary-preview
+                  prompt-plugin $ use-prompt (>> states :prompt)
+                    {} (:text "|Paste hex code here") (:multiline? true)
+                      :input-style $ {} (:font-family ui/font-code)
                 div
-                  {} $ :style (merge ui/global ui/fullscreen ui/column)
+                  {} $ :class-name (str-spaced css/global css/fullscreen css/column)
                   div
                     {} $ :style
-                      merge ui/row-parted $ {} (:padding "\"2px 8px")
+                      merge ui/row-middle $ {} (:padding "\"2px 8px") (:align-items :flex-start)
                     <> "\"Life Patterns" $ {} (:font-family ui/font-fancy)
                     =< 8 nil
-                    div $ {}
-                      :inner-text $ encode-rules (:code-array store)
-                      :style $ merge ui/expand
-                        {} (:font-family ui/font-code) (:font-size 8) (:line-height "\"10px") (:word-break :break-all) (:cursor :pointer)
-                      :on-click $ fn (e d!)
-                        copy-text/default $ encode-rules (:code-array store)
-                        let
-                            t $ -> e :event .-target
-                            r $ js/document.createRange
-                            s $ js/getSelection
-                          .selectNode r t
-                          .removeAllRanges s
-                          .addRange s r
+                    let
+                        rule-str $ encode-rules (:code-array store)
+                        rule-hex $ binary-to-hex rule-str
+                      div
+                        {} $ :style
+                          merge ui/expand $ {} (:font-family ui/font-code) (:font-size 10) (:line-height "\"10px") (:word-break :break-all) (:cursor :pointer)
+                        div
+                          {} $ :class-name css/row-middle
+                          span $ {} (:inner-text rule-hex)
+                            :on-click $ fn (e d!) (copy! rule-hex)
+                              highlight-node! $ -> e :event .-target
+                          a $ {} (:inner-text "\"Set") (:class-name css/link)
+                            :style $ {}
+                            :on-click $ fn (e d!)
+                              .show prompt-plugin d! $ fn (text)
+                                d! $ :: :set-data
+                                  -> text (hex-to-binary) (.split "\"")
+                                    .map $ fn (x) (= x "\"1")
+                          a $ {} (:inner-text "\"View binary") (:class-name css/link)
+                            :style $ {}
+                            :on-click $ fn (e d!) (.show alert-plugin d! rule-str)
+                          a $ {} (:inner-text "\"Open game!") (:class-name css/link)
+                            :style $ {}
+                            :on-click $ fn (e d!)
+                              js/window.open $ str "\"https://webgpu.art/fungi?rule=" rule-hex
                   div
                     {} $ :style
                       merge ui/row-middle $ {} (:padding "\"4 8px")
@@ -74,19 +92,40 @@
                     {} $ :style
                       merge ui/expand $ {} (:padding "\"0 6px") (:padding-bottom 120) (:padding-top 20)
                         :border-top $ str "\"1px solid " (hsl 0 0 90)
-                    , & $ -> (:code-array store)
-                      map-indexed $ fn (idx v) ([] idx v)
-                      filter $ fn (pair)
-                        let[] (idx v) pair $ if
-                          nil? $ :filter-size state
-                          , true
-                            and
-                              = (count-bits idx) (:filter-size state)
-                              = (:has-center? state)
-                                = 1 $ pick-bit-at idx 4
-                      map $ fn (pair)
-                        let[] (idx v) pair $ comp-rule-card idx v
+                    div ({}) (<> "\"Filled on next step:" css/font-fancy)
+                    list-> ({})
+                      -> (:code-array store)
+                        map-indexed $ fn (idx v) ([] idx v)
+                        filter $ fn (pair)
+                          let[] (idx v) pair $ and v
+                            if
+                              nil? $ :filter-size state
+                              , true $ and
+                                = (count-bits idx) (:filter-size state)
+                                = (:has-center? state)
+                                  = 1 $ pick-bit-at idx 4
+                        map $ fn (pair)
+                          let[] (idx v) pair $ [] idx (comp-rule-card idx v)
+                    =< nil 16
+                    div ({}) (<> "\"Empty on next step:" css/font-fancy)
+                    list-> ({})
+                      -> (:code-array store) (filter not)
+                        map-indexed $ fn (idx v) ([] idx v)
+                        filter $ fn (pair)
+                          let[] (idx v) pair $ and (not v)
+                            if
+                              nil? $ :filter-size state
+                              , true $ and
+                                = (count-bits idx) (:filter-size state)
+                                = (:has-center? state)
+                                  = 1 $ pick-bit-at idx 4
+                        map $ fn (pair)
+                          let[] (idx v) pair $ [] idx (comp-rule-card idx v)
+                  .render alert-plugin
+                  .render prompt-plugin
                   when dev? $ comp-reel (>> states :reel) reel ({})
+                  when dev? $ comp-inspect "\"Store" store
+                    {} $ :bottom 0
         |comp-filter $ %{} :CodeEntry (:doc |)
           :code $ quote
             defcomp comp-filter (filter-size has-center? on-change on-center)
@@ -109,6 +148,9 @@
                               :background-color $ hsl 0 0 96
                               :border-radius "\"4px"
                               :cursor :pointer
+                              :opacity 0.2
+                            if (= n filter-size)
+                              {} $ :opacity 1
                           :on-click $ fn (e d!) (on-change n d!)
                         <> $ str n
                   =< 8 nil
@@ -146,35 +188,38 @@
           :code $ quote
             defn encode-rules (codes)
               -> codes
-                map $ fn (x) (if x "\"1" "\"_")
+                map $ fn (x) (if x "\"1" "\"0")
                 join-str "\""
+        |style-binary-preview $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defstyle style-binary-preview $ {}
+              "\"&" $ {} (:word-break :break-all) (:max-width "\"400px") (:display :inline-block) (:line-height 20)
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
-          ns app.comp.container $ :require ([] respo-ui.core :as ui)
-            [] respo.util.format :refer $ [] hsl
-            [] respo.core :refer $ [] defcomp defeffect <> >> div button textarea span input
+          ns app.comp.container $ :require (respo-ui.core :as ui) (respo-ui.css :as css)
+            respo.util.format :refer $ [] hsl
+            respo.css :refer $ defstyle
+            [] respo.core :refer $ [] defcomp defeffect <> >> div button textarea span input a list->
             [] respo.comp.space :refer $ [] =<
             [] reel.comp.reel :refer $ [] comp-reel
             [] respo-md.comp.md :refer $ [] comp-md
             [] app.config :refer $ [] dev?
             [] respo.comp.inspect :refer $ [] comp-inspect
             "\"./bitwise" :refer $ pick-bit-at
-            [] "\"copy-text-to-clipboard" :as copy-text
-            [] app.updater :refer $ [] count-bits
+            app.updater :refer $ [] count-bits
+            "\"../lib/hex" :refer $ binary-to-hex hex-to-binary
+            app.util :refer $ copy! highlight-node!
+            respo-alerts.core :refer $ use-alert use-prompt use-confirm
     |app.config $ %{} :FileEntry
       :defs $ {}
-        |cdn? $ %{} :CodeEntry (:doc |)
-          :code $ quote
-            def cdn? $ cond
-                exists? js/window
-                , false
-              (exists? js/process) (= "\"true" js/process.env.cdn)
-              :else false
         |dev? $ %{} :CodeEntry (:doc |)
           :code $ quote (def dev? true)
         |site $ %{} :CodeEntry (:doc |)
           :code $ quote
-            def site $ {} (:dev-ui "\"http://localhost:8100/main-fonts.css") (:release-ui "\"http://cdn.tiye.me/favored-fonts/main-fonts.css") (:cdn-url "\"http://cdn.tiye.me/calcit-workflow/") (:title "\"Calcit") (:icon "\"http://cdn.tiye.me/logo/mvc-works.png") (:storage-key "\"life-patterns")
+            def site $ {} (:title "\"Life pattern") (:icon "\"http://cdn.tiye.me/logo/mvc-works.png") (:storage-key "\"life-patterns")
+        |skip-storage? $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            def skip-storage? $ get-env "\"skip-storage" false
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote (ns app.config)
     |app.main $ %{} :FileEntry
@@ -198,19 +243,21 @@
               render-app! render!
               add-watch *reel :changes $ fn (reel prev) (render-app! render!)
               listen-devtools! |k dispatch!
-              ; .addEventListener js/window |beforeunload $ fn (event) (persist-storage!)
-              ; repeat! 60 persist-storage!
-              ; let
-                  raw $ .getItem js/localStorage (:storage-key config/site)
-                when (some? raw)
-                  dispatch! :hydrate-storage $ extract-cirru-edn (js/JSON.parse raw)
+              js/window.addEventListener |beforeunload $ fn (event) (persist-storage!)
+              repeat! 60 persist-storage!
+              if (not config/skip-storage?)
+                let
+                    raw $ js/localStorage.getItem (:storage-key config/site)
+                  when (some? raw)
+                    dispatch! $ :: :hydrate-storage
+                      extract-cirru-edn $ js/JSON.parse raw
               println "|App started."
         |mount-target $ %{} :CodeEntry (:doc |)
           :code $ quote
             def mount-target $ js/document.querySelector |.app
         |persist-storage! $ %{} :CodeEntry (:doc |)
           :code $ quote
-            defn persist-storage! () $ .setItem js/localStorage (:storage-key config/site)
+            defn persist-storage! () $ js/localStorage.setItem (:storage-key config/site)
               js/JSON.stringify $ to-cirru-edn (:store @*reel)
         |reload! $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -270,6 +317,7 @@
                   update-states store cursor d
                 (:toggle data)
                   update-in store ([] :code-array data) not
+                (:set-data data) (assoc store :code-array data)
                 (:select data)
                   update store :code-array $ fn (xs)
                     let[] (size has-center?) data $ if (nil? size)
@@ -298,3 +346,19 @@
             [] respo.cursor :refer $ [] update-states
             [] app.schema :as schema
             "\"./bitwise" :refer $ pick-bit-at
+    |app.util $ %{} :FileEntry
+      :defs $ {}
+        |copy! $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defn copy! (content) (hint-fn async) (.!writeText js/navigator.clipboard content)
+        |highlight-node! $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            defn highlight-node! (t)
+              let
+                  r $ js/document.createRange
+                  s $ js/getSelection
+                .!selectNode r t
+                .!removeAllRanges s
+                .!addRange s r
+      :ns $ %{} :CodeEntry (:doc |)
+        :code $ quote (ns app.util)
