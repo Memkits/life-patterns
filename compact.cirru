@@ -109,7 +109,7 @@
                     =< nil 16
                     div ({}) (<> "\"Empty on next step:" css/font-fancy)
                     list-> ({})
-                      -> (:code-array store) (filter not)
+                      -> (:code-array store)
                         map-indexed $ fn (idx v) ([] idx v)
                         filter $ fn (pair)
                           let[] (idx v) pair $ and (not v)
@@ -175,15 +175,17 @@
                       :height 39
                   :on-click $ fn (e d!) (d! :toggle idx)
                 , & $ -> (range 9)
-                  map $ fn (pos)
-                    div $ {}
-                      :style $ {} (:width 11) (:height 11) (:display :inline-block) (:margin-top 1) (:margin-left 1)
-                        :background-color $ if
-                          = 1 $ pick-bit-at idx (- 8 pos)
-                          hsl 0 0 40
-                          hsl 0 0 90
-                        :opacity $ if result 1 0.2
-                        :cursor :pointer
+                  map $ fn (n-pos)
+                    let
+                        pos $ - 8 n-pos
+                      div $ {}
+                        :style $ {} (:width 11) (:height 11) (:display :inline-block) (:margin-top 1) (:margin-left 1)
+                          :background-color $ if
+                            = 1 $ pick-bit-at idx (- 8 pos)
+                            hsl 0 0 40
+                            hsl 0 0 90
+                          :opacity $ if result 1 0.2
+                          :cursor :pointer
         |encode-rules $ %{} :CodeEntry (:doc |)
           :code $ quote
             defn encode-rules (codes)
@@ -214,6 +216,9 @@
       :defs $ {}
         |dev? $ %{} :CodeEntry (:doc |)
           :code $ quote (def dev? true)
+        |rule0 $ %{} :CodeEntry (:doc |)
+          :code $ quote
+            def rule0 $ get-env "\"rule"
         |site $ %{} :CodeEntry (:doc |)
           :code $ quote
             def site $ {} (:title "\"Life pattern") (:icon "\"http://cdn.tiye.me/logo/mvc-works.png") (:storage-key "\"life-patterns")
@@ -251,6 +256,9 @@
                   when (some? raw)
                     dispatch! $ :: :hydrate-storage
                       extract-cirru-edn $ js/JSON.parse raw
+              if config/rule0 $ dispatch!
+                :: :set-data $ -> config/rule0 (hex-to-binary) (.split "\"")
+                  .map $ fn (x) (= x "\"1")
               println "|App started."
         |mount-target $ %{} :CodeEntry (:doc |)
           :code $ quote
@@ -292,6 +300,7 @@
             [] reel.core :refer $ [] reel-updater refresh-reel
             [] reel.schema :as reel-schema
             [] app.config :as config
+            "\"../lib/hex" :refer $ hex-to-binary
     |app.schema $ %{} :FileEntry
       :defs $ {}
         |store $ %{} :CodeEntry (:doc |)
