@@ -199,16 +199,16 @@
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
           ns app.comp.container $ :require (respo-ui.core :as ui) (respo-ui.css :as css)
-            respo.util.format :refer $ [] hsl
+            respo.util.format :refer $ hsl
             respo.css :refer $ defstyle
-            [] respo.core :refer $ [] defcomp defeffect <> >> div button textarea span input a list->
-            [] respo.comp.space :refer $ [] =<
-            [] reel.comp.reel :refer $ [] comp-reel
-            [] respo-md.comp.md :refer $ [] comp-md
-            [] app.config :refer $ [] dev?
-            [] respo.comp.inspect :refer $ [] comp-inspect
+            respo.core :refer $ defcomp defeffect <> >> div button textarea span input a list->
+            respo.comp.space :refer $ =<
+            reel.comp.reel :refer $ comp-reel
+            respo-md.comp.md :refer $ comp-md
+            app.config :refer $ dev?
+            respo.comp.inspect :refer $ comp-inspect
             "\"./bitwise" :refer $ pick-bit-at
-            app.updater :refer $ [] count-bits
+            app.updater :refer $ count-bits
             "\"../lib/hex" :refer $ binary-to-hex hex-to-binary
             app.util :refer $ copy! highlight-node!
             respo-alerts.core :refer $ use-alert use-prompt use-confirm
@@ -352,8 +352,8 @@
       :ns $ %{} :CodeEntry (:doc |)
         :code $ quote
           ns app.updater $ :require
-            [] respo.cursor :refer $ [] update-states
-            [] app.schema :as schema
+            respo.cursor :refer $ update-states
+            app.schema :as schema
             "\"./bitwise" :refer $ pick-bit-at
     |app.util $ %{} :FileEntry
       :defs $ {}
