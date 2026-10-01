@@ -4,12 +4,13 @@
     "copy-text-to-clipboard": "^3.2.0"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "vite": "8.3.1"
   },
   "scripts": {
-    "compile": "calcit calcit.cirru js && cp assets/bitwise.js js-out/",
+    "compile": "calcit calcit.cirru js",
     "build": "yarn compile && vite build",
-    "dev": "vite",
+    "dev": "yarn compile && concurrently --kill-others \"calcit calcit.cirru js -w\" \"vite\"",
     "release": "yarn build"
   },
   "version": "0.0.2",

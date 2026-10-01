@@ -250,11 +250,11 @@
             respo-md.comp.md :refer $ comp-md
             app.config :refer $ dev?
             respo.comp.inspect :refer $ comp-inspect
-            |./bitwise :refer $ pick-bit-at
             app.updater :refer $ count-bits
             |../lib/hex :refer $ binary-to-hex hex-to-binary
             app.util :refer $ copy! highlight-node!
             respo-alerts.core :refer $ use-alert use-prompt use-confirm
+            |../assets/bitwise.js :refer $ pick-bit-at
     'app.config $ %{} 'FileEntry
       :defs $ {}
         'dev? $ %{} 'CodeEntry (:doc |)
@@ -468,7 +468,7 @@
           :require
             respo.cursor :refer $ update-states
             app.schema :as schema
-            |./bitwise :refer $ pick-bit-at
+            |../assets/bitwise.js :refer $ pick-bit-at
     'app.util $ %{} 'FileEntry
       :defs $ {}
         'copy! $ %{} 'CodeEntry (:doc |)
