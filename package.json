@@ -4,13 +4,12 @@
     "copy-text-to-clipboard": "^3.2.0"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5",
     "vite": "8.3.1"
   },
   "scripts": {
-    "compile": "calcit calcit.cirru js",
+    "compile": "calcit calcit.cirru",
     "build": "yarn compile && vite build",
-    "dev": "yarn compile && concurrently --kill-others \"calcit calcit.cirru js -w\" \"vite\"",
+    "dev": "yarn compile && vite",
     "release": "yarn build"
   },
   "version": "0.0.2",
