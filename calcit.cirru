@@ -5,7 +5,7 @@
   :entries $ {} $ :default
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
-      :modules $ [] |respo.calcit/ |lilac/ |memof/ |respo-ui.calcit/ |respo-markdown.calcit/ |reel.calcit/ |alerts.calcit/
+      :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |alerts.calcit/ |js-ffi/
       :type-slots $ {}
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
@@ -14,9 +14,10 @@
           :code $ quote $ def base-rule
             repeat (pow 2 9) 0
           :examples $ []
+          :schema $ :: 'List 'Number
         'binary-to-hex-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn binary-to-hex-text (text)
-            unsafe-coerce (binary-to-hex text) 'String
+            js-ffi.contract/expect-string |binary-to-hex-text $ binary-to-hex text
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ [] 'String
@@ -34,32 +35,16 @@
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (reel)
             let
-                store $ assert-type
-                  option:unwrap-or (get reel :store) ({})
-                  :: 'Map 'Tag 'Dynamic
-                states $ assert-type
-                  option:unwrap-or (get store :states) ({})
-                  :: 'Map 'Tag 'Dynamic
-                cursor $ assert-type
+                store $ :store reel
+                states $ :states store
+                cursor $ decode-map-as
                   option:unwrap-or (get states :cursor) ([])
                   :: 'List 'Dynamic
-                state $ assert-type
-                  option:unwrap-or (get states :data)
-                    {} (:filter-size nil) (:has-center? true)
-                  :: 'Map 'Tag 'Dynamic
-                filter-size-raw $ option:unwrap-or (get state :filter-size) nil
-                filter-size $ assert-type
-                  if (number? filter-size-raw)
-                    Option :some $ assert-type filter-size-raw 'Number
-                    Option :none
-                  :: 'Option 'Number
-                has-center? $ assert-type
-                  option:unwrap-or (get state :has-center?) true
-                  , 'Bool
-                code-array $ assert-type
-                  option:unwrap-or (get store :code-array)
-                    repeat false $ pow 2 9
-                  :: 'List 'Bool
+                state $ app.schema/read-state-map $ option:unwrap-or (get states :data) nil
+                filter-size-raw $ app.schema/read-filter state
+                filter-size $ :filter-size filter-size-raw
+                has-center? $ :has-center? filter-size-raw
+                code-array $ :code-array store
                 alert-plugin $ use-alert (>> states :alert)
                   {} (:text nil)
                     :card-class $ str-spaced css/font-code style-binary-preview
@@ -89,7 +74,7 @@
                             .show prompt-plugin d! $ fn (text)
                               hint-fn $ {} (:return 'Unit)
                                 :args $ [] 'String
-                              d! $ :: :set-data $ -> (assert-type text 'String) (hex-to-binary-text) (.split |)
+                              d! $ app.schema/Op :set-data $ -> text (hex-to-binary-text) (.split |)
                                 .map $ fn (x) (= x |1)
                         a $ {} (:inner-text "|View binary") (:class-name css/link)
                           :style $ {}
@@ -102,17 +87,19 @@
                     {} $ :padding "|4 8px"
                   comp-filter filter-size has-center?
                     fn (n d!)
-                      d! cursor $ assoc state :filter-size n
+                      d! $ app.schema/Op :states cursor $ match n
+                        (:some size) (assoc state :filter-size size)
+                        (:none) (assoc state :filter-size nil)
                     fn (v d!)
-                      d! cursor $ assoc state :has-center? v
+                      d! $ app.schema/Op :states cursor $ assoc state :has-center? v
                   =< 32 nil
                   button $ {} (:style ui/button) (:inner-text "|Select All")
                     :on-click $ fn (e d!)
-                      d! :select $ [] (option:unwrap-or filter-size nil) has-center?
+                      d! $ app.schema/Op :select filter-size has-center?
                   =< 16 nil
                   button $ {} (:style ui/button) (:inner-text |Uncheck)
                     :on-click $ fn (e d!)
-                      d! :unselect $ [] (option:unwrap-or filter-size nil) has-center?
+                      d! $ app.schema/Op :unselect filter-size has-center?
                 div
                   {} $ :style $ merge ui/expand
                     {} (:padding "|0 6px") (:padding-bottom 120) (:padding-top 20)
@@ -125,7 +112,7 @@
                         let[] (idx v) pair $ and v $ if (option:none? filter-size) true
                           and
                             = (count-bits idx) (option:unwrap filter-size)
-                            = has-center? $ = 1 $ pick-bit-at idx 4
+                            = has-center? $ = 1 $ bit-and 1 (bit-shr idx 4)
                       map $ fn (pair)
                         let[] (idx v) pair $ [] idx $ comp-rule-card idx v
                   =< nil 16
@@ -137,16 +124,16 @@
                         let[] (idx v) pair $ and (not v)
                           if (option:none? filter-size) true $ and
                             = (count-bits idx) (option:unwrap filter-size)
-                            = has-center? $ = 1 $ pick-bit-at idx 4
+                            = has-center? $ = 1 $ bit-and 1 (bit-shr idx 4)
                       map $ fn (pair)
                         let[] (idx v) pair $ [] idx $ comp-rule-card idx v
                 .render alert-plugin
                 .render prompt-plugin
-                when dev? $ comp-reel (>> states :reel) reel $ {}
+                when dev? $ comp-typed-reel (>> states :reel) reel $ {}
                 when dev? $ comp-inspect |Store store $ {} (:bottom 0)
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+            :args $ [] $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
             div
@@ -155,7 +142,8 @@
               div
                 {}
                   :style $ merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
-                  :on-click $ fn (e d!) (on-change nil d!)
+                  :on-click $ fn (e d!)
+                    on-change (Option :none) d!
                 <> |All
               , &
                 -> (range 10)
@@ -173,7 +161,8 @@
                               = n $ option:unwrap filter-size
                             {} $ :opacity 1
                             , {}
-                        :on-click $ fn (e d!) (on-change n d!)
+                        :on-click $ fn (e d!)
+                          on-change (Option :some n) d!
                       <> $ str n
                 =< 8 nil
                 div
@@ -186,7 +175,15 @@
                   <> |has-center?
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Option 'Number) 'Bool 'Dynamic 'Dynamic
+            :args $ [] (:: 'Option 'Number) 'Bool
+              :: 'Fn $ {} (:return 'Unit)
+                :args $ [] (:: 'Option 'Number)
+                  :: 'Fn $ {} (:return 'Unit)
+                    :args $ [] 'Enum
+              :: 'Fn $ {} (:return 'Unit)
+                :args $ [] 'Bool $ :: 'Fn
+                  {} (:return 'Unit)
+                    :args $ [] 'Enum
         'comp-rule-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn comp-rule-card (idx result)
             div
@@ -196,7 +193,8 @@
                   :display :inline-block
                   :width 39
                   :height 39
-                :on-click $ fn (e d!) (d! :toggle idx)
+                :on-click $ fn (e d!)
+                  d! $ app.schema/Op :toggle idx
               , & $ -> (range 9)
                 map $ fn (n-pos)
                   let
@@ -204,32 +202,32 @@
                     div $ {} $ :style
                       {} (:width 11) (:height 11) (:display :inline-block) (:margin-top 1) (:margin-left 1)
                         :background-color $ if
-                          = 1 $ pick-bit-at idx $ - 8 pos
+                          = 1 $ bit-and 1 $ bit-shr idx (- 8 pos)
                           hsl 0 0 40
                           hsl 0 0 90
                         :opacity $ if result 1 0.2
                         :cursor :pointer
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
+          :schema $ :: 'Fn $ {} (:return 'respo.schema/Element)
             :args $ [] 'Number 'Bool
         'encode-rules $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn encode-rules (codes)
             -> codes
               map $ fn (x) (if x |1 |0)
-              join-str |
+              join-string |
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ [] $ :: 'List 'Bool
         'hex-to-binary-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn hex-to-binary-text (text)
-            unsafe-coerce (hex-to-binary text) 'String
+            js-ffi.contract/expect-string |hex-to-binary-text $ hex-to-binary text
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'String)
             :args $ [] 'String
             :features $ #{} :js-ffi
         'open-game! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn open-game! (rule-hex)
-            js/window.open $ str |https://webgpu.art/fungi?rule= rule-hex
+            js-ffi.browser/window-open $ str |https://webgpu.art/fungi?rule= rule-hex
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
@@ -239,6 +237,7 @@
           :code $ quote $ defstyle style-binary-preview
             {} $ |& $ {} (:word-break :break-all) (:max-width |400px) (:display :inline-block) (:line-height 20)
           :examples $ []
+          :schema $ :: 'String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.core :as ui) (respo-ui.css :as css)
@@ -246,15 +245,13 @@
             respo.css :refer $ defstyle
             respo.core :refer $ defcomp defeffect <> >> div button textarea span input a list->
             respo.comp.space :refer $ =<
-            reel.comp.reel :refer $ comp-reel
-            respo-md.comp.md :refer $ comp-md
+            reel.comp.reel :refer $ comp-typed-reel
             app.config :refer $ dev?
             respo.comp.inspect :refer $ comp-inspect
             app.updater :refer $ count-bits
-            |../lib/hex :refer $ binary-to-hex hex-to-binary
+            |../lib/hex.mjs :refer $ binary-to-hex hex-to-binary
             app.util :refer $ copy! highlight-node!
             respo-alerts.core :refer $ use-alert use-prompt use-confirm
-            |../assets/bitwise.js :refer $ pick-bit-at
     'app.config $ %{} 'FileEntry
       :defs $ {}
         'dev? $ %{} 'CodeEntry (:doc |)
@@ -269,7 +266,7 @@
           :code $ quote $ def site
             {} (:title "|Life pattern") (:icon |http://cdn.tiye.me/logo/mvc-works.png) (:storage-key |life-patterns)
           :examples $ []
-          :schema $ :: 'Map 'Tag 'Dynamic
+          :schema $ :: 'Map 'Tag 'String
         'skip-storage? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def skip-storage?
             option:some? $ get-env |skip-storage
@@ -280,25 +277,27 @@
     'app.main $ %{} 'FileEntry
       :defs $ {}
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defatom *reel
-            -> reel-schema/reel (assoc :base schema/store) (assoc :store schema/store)
+          :code $ quote $ defref *reel
+            assert-type (typed/new-reel schema/store) (:: 'reel.typed/State 'app.schema/Op 'app.schema/Store)
           :examples $ []
+          :schema $ :: 'Ref $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
+        '*storage-error? $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defref *storage-error? false
+          :examples $ []
+          :schema $ :: 'Ref 'Bool
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            when
-              and config/dev? $ not= op :states
-              js/console.log |Dispatch: op
-            reset! *reel $ reel-updater updater @*reel op
+            let
+                op-id $ generate-id!
+                op-time $ host/now-ms
+              reset! *reel $ match (typed/decode-control op)
+                (:some control) (typed/apply-control updater @*reel control)
+                (:none)
+                  typed/record-op updater @*reel (schema/decode-op op) op-id op-time
+              , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
-            :features $ #{} :js-ffi
-        'hex-to-binary-text $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn hex-to-binary-text (text)
-            unsafe-coerce (hex-to-binary text) 'String
-          :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] 'String
+            :args $ [] 'Enum
             :features $ #{} :js-ffi
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
@@ -306,18 +305,18 @@
             if config/dev? $ load-console-formatter!
             if ssr? $ render-app! realize-ssr!
             render-app! render!
-            add-watch *reel :changes $ fn (reel prev) (render-app! render!)
+            add-watch! *reel :changes $ fn (_reel _previous) (render-app! render!) &unit
             listen-devtools! |k dispatch!
-            js/window.addEventListener |beforeunload $ fn (event) (persist-storage!)
+            browser/add-event-listener! |beforeunload $ fn (event) (persist-storage!)
             repeat! 60 persist-storage!
             if (not config/skip-storage?)
               let
-                  raw $ js/localStorage.getItem $ :storage-key config/site
-                when (js-present? raw)
-                  dispatch! $ :: :hydrate-storage $ extract-cirru-edn (js/JSON.parse raw)
+                  raw $ browser/storage-get $ option:unwrap-or (get config/site :storage-key) |life-patterns
+                when (option:some? raw)
+                  restore-storage! $ option:unwrap raw
             when (option:some? config/rule0)
               dispatch! $ :: :set-data $ ->
-                hex-to-binary-text $ option:unwrap config/rule0
+                app.comp.container/hex-to-binary-text $ option:unwrap config/rule0
                 .split |
                 .map $ fn (x) (= x |1)
             println "|App started."
@@ -326,25 +325,26 @@
             :args $ []
             :features $ #{} :js-ffi
         'mount-target $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ def mount-target (js/document.querySelector |.app)
+          :code $ quote $ def mount-target
+            option:unwrap $ respo.ffi.browser/query-selector |.app
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ :: 'respo.dom/DomElement
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
-            js/localStorage.setItem
-              option:unwrap-or (get config/site :storage-key) |life-patterns
-              js/JSON.stringify $ to-cirru-edn $ option:unwrap-or (get @*reel :store) schema/store
+            when (not @*storage-error?)
+              browser/storage-set!
+                option:unwrap-or (get config/site :storage-key) |life-patterns
+                js-ffi.contract/expect-string "|Stored rule JSON" $ js/JSON.stringify $ to-cirru-edn
+                  &struct:to-map $ :store @*reel
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ []
             :features $ #{} :js-ffi
         'reload! $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn reload! () (remove-watch *reel :changes) (clear-cache!)
-            add-watch *reel :changes $ fn (reel prev) (render-app! render!)
-            reset! *reel $ assert-type (refresh-reel @*reel schema/store updater) (:: 'Map 'Tag 'Dynamic)
+          :code $ quote $ defn reload! () (remove-watch! *reel :changes) (clear-cache!)
+            add-watch! *reel :changes $ fn (_reel _previous) (render-app! render!) &unit
+            reset! *reel $ typed/refresh updater @*reel schema/store
             , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
@@ -354,10 +354,14 @@
             renderer mount-target (comp-container @*reel) dispatch!
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
+            :args $ [] $ :: 'Fn
+              {} (:return 'Unit)
+                :args $ [] 'respo.dom/DomElement 'respo.schema/Component $ :: 'Fn
+                  {} (:return 'Unit)
+                    :args $ [] 'Enum
         'repeat! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn repeat! (duration cb)
-            js/setTimeout
+            browser/set-timeout!
               fn () (cb) (repeat! duration cb)
               * 1000 duration
             , &unit
@@ -367,133 +371,293 @@
               {} (:return 'Unit)
                 :args $ []
             :features $ #{} :js-ffi
+        'restore-storage! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn restore-storage! (raw)
+            try
+              do
+                dispatch! $ schema/Op :hydrate-storage $ extract-cirru-edn (js/JSON.parse raw)
+                reset! *storage-error? false
+                , &unit
+              fn (message) (reset! *storage-error? true)
+                js/console.error "|Cannot restore stored rule; automatic writes paused:" message
+                , &unit
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'Unit)
+            :args $ [] 'String
+            :features $ #{} :js-ffi
         'ssr? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def ssr?
-            js-present? $ js/document.querySelector |meta.respo-ssr
+            option:some? $ respo.ffi.browser/query-selector |meta.respo-ssr
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Bool)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ :: 'Bool
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
-            [] respo.core :refer $ [] render! clear-cache! realize-ssr!
-            [] app.comp.container :refer $ [] comp-container
-            [] app.updater :refer $ [] updater
-            [] app.schema :as schema
-            [] reel.util :refer $ [] listen-devtools!
-            [] reel.core :refer $ [] reel-updater refresh-reel
-            [] reel.schema :as reel-schema
-            [] app.config :as config
-            |../lib/hex :refer $ hex-to-binary
+            respo.core :refer $ render! clear-cache! realize-ssr!
+            app.comp.container :refer $ comp-container
+            app.updater :refer $ updater
+            app.schema :as schema
+            reel.util :refer $ listen-devtools!
+            app.config :as config
+            reel.typed :as typed
+            js-ffi.browser :as browser
+            js-ffi.shared :as host
+            |@calcit/procs :refer $ to-cirru-edn extract-cirru-edn
     'app.schema $ %{} 'FileEntry
-      :defs $ {} $ 'store
-        %{} 'CodeEntry (:doc |)
-          :code $ quote $ def store
-            {}
-              :states $ {} $ :cursor ([])
-              :code-array $ repeat false $ pow 2 9
+      :defs $ {}
+        'FilterState $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct FilterState
+            :filter-size $ :: 'Option 'Number
+            :has-center? 'Bool
           :examples $ []
-          :schema $ :: 'Map 'Tag 'Dynamic
+          :schema $ :: 'StructDef
+        'Op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defenum Op
+            :states (:: 'List 'Dynamic) 'Dynamic
+            :toggle 'Number
+            :set-data $ :: 'List 'Bool
+            :select (:: 'Option 'Number) 'Bool
+            :unselect (:: 'Option 'Number) 'Bool
+            :hydrate-storage 'Dynamic
+          :examples $ []
+          :schema $ :: 'EnumDef
+        'Store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Store
+            :states $ :: 'Map 'Dynamic 'Dynamic
+            :code-array $ :: 'List 'Bool
+          :examples $ []
+          :schema $ :: 'StructDef
+        'checked-codes $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn checked-codes (raw)
+            let
+                codes $ decode-map-as raw $ :: 'List 'Bool
+              if
+                and
+                  > (count codes) 0
+                  integer? $ / (count codes) 4
+                , codes $ raise "|Rule data must contain a nonempty multiple of four Boolean bits"
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'List 'Bool
+        'decode-op $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn decode-op (op)
+            match op
+              (:states cursor data)
+                Op :states
+                  decode-map-as cursor $ :: 'List 'Dynamic
+                  , data
+              (:toggle index)
+                Op :toggle $ decode-map-as index 'Number
+              (:set-data data)
+                Op :set-data $ checked-codes data
+              (:select size center)
+                Op :select
+                  decode-map-as size $ :: 'Option 'Number
+                  decode-map-as center 'Bool
+              (:unselect size center)
+                Op :unselect
+                  decode-map-as size $ :: 'Option 'Number
+                  decode-map-as center 'Bool
+              (:hydrate-storage data) (Op :hydrate-storage data)
+              _ $ raise $ str "|Unknown Life Patterns operation: " op
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Op)
+            :args $ [] 'Enum
+        'decode-store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn decode-store (raw)
+            let
+                store $ decode-map-as
+                  if (struct? raw) (&struct:to-map raw) raw
+                  , 'app.schema/Store
+              decode-map-as
+                option:unwrap-or
+                  get (:states store) :cursor
+                  []
+                :: 'List 'Dynamic
+              read-filter $ read-state-map $ option:unwrap-or
+                get (:states store) :data
+                , nil
+              assoc store :code-array $ checked-codes $ :code-array store
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
+            :args $ [] 'Dynamic
+        'read-filter $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn read-filter (raw)
+            let
+                size $ option:unwrap-or (get raw :filter-size) nil
+              FilterState :filter-size
+                if (number? size) (Option :some size) (Option :none)
+                , :has-center? $ decode-map-as
+                  option:unwrap-or (get raw :has-center?) true
+                  , 'Bool
+          :examples $ []
+          :schema $ :: 'Fn $ {} (:return 'app.schema/FilterState)
+            :args $ [] $ :: 'Map 'Tag 'Dynamic
+        'read-state-map $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn read-state-map (raw)
+            if (nil? raw) ({})
+              decode-map-as raw $ :: 'Map 'Tag 'Dynamic
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] 'Dynamic
+            :return $ :: 'Map 'Tag 'Dynamic
+        'store $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ def store
+            Store :states
+              {} $ :cursor $ []
+              , :code-array $ repeat false $ pow 2 9
+          :examples $ []
+          :schema $ :: 'app.schema/Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
       :defs $ {}
         'count-bits $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn count-bits (n)
-            + & $ map (range 9)
-              fn (x) (pick-bit-at n x)
+            reduce (range 9) 0 $ fn (total index)
+              + total $ bit-and 1 $ bit-shr n index
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Number)
             :args $ [] 'Number
+          :tests $ [] $ %{} 'TestEntry (:name |nine-bit-populations)
+            :code $ quote $ do
+              assert= (count-bits 0) 0
+              assert= (count-bits 16) 1
+              assert= (count-bits 511) 9
+              assert=
+                reduce
+                  map (range 512) count-bits
+                  , 0 +
+                , 2304
+            :tags $ #{} :regression
+        'update-selection $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn update-selection (codes size center? selected?)
+            if (option:none? size)
+              repeat selected? $ pow 2 9
+              map-indexed codes $ fn (index value)
+                if
+                  and
+                    = (option:unwrap size) (count-bits index)
+                    = center? $ = 1 $ bit-and 1 (bit-shr index 4)
+                  , selected? value
+          :examples $ []
+          :schema $ :: 'Fn $ {}
+            :args $ [] (:: 'List 'Bool) (:: 'Option 'Number) 'Bool 'Bool
+            :return $ :: 'List 'Bool
+          :tests $ [] $ %{} 'TestEntry (:name |all-and-center-selection)
+            :code $ quote $ let
+                codes $ repeat false 512
+              assert=
+                update-selection ([] false false false false) (Option :none) false true
+                repeat true 512
+              assert=
+                count $ filter
+                  update-selection codes (Option :some 4) true true
+                  fn (bit) bit
+                , 56
+              assert=
+                count $ filter
+                  update-selection codes (Option :some 4) false true
+                  fn (bit) bit
+                , 70
+              assert=
+                count $ filter
+                  update-selection (repeat true 512) (Option :some 4) true false
+                  fn (bit) bit
+                , 456
+            :tags $ #{} :regression
         'updater $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn updater (store op op-id op-time)
             match op
-              (:states cursor d) (update-states store cursor d)
-              (:toggle data)
-                update-in store ([] :code-array data)
-                  fn (value)
-                    not $ option:unwrap-or value false
-              (:set-data data) (assoc store :code-array data)
-              (:select data)
-                update store :code-array $ fn (xs)
-                  let
-                      data-list $ assert-type data $ :: 'List 'Dynamic
-                      size-raw $ option:unwrap-or (nth data-list 0) nil
-                      has-center-raw $ option:unwrap-or (nth data-list 1) false
-                      code-array $ assert-type xs $ :: 'List 'Bool
-                      size $ assert-type
-                        if (number? size-raw)
-                          Option :some $ assert-type size-raw 'Number
-                          Option :none
-                        :: 'Option 'Number
-                      has-center? $ assert-type has-center-raw 'Bool
-                    if (option:none? size)
-                      repeat true $ pow 2 9
-                      map-indexed code-array $ fn (idx x)
-                        if
-                          and
-                            = (option:unwrap size) (count-bits idx)
-                            = has-center? $ = 1 $ pick-bit-at idx 4
-                          , true x
-              (:unselect data)
-                update store :code-array $ fn (xs)
-                  let
-                      data-list $ assert-type data $ :: 'List 'Dynamic
-                      size-raw $ option:unwrap-or (nth data-list 0) nil
-                      has-center-raw $ option:unwrap-or (nth data-list 1) false
-                      code-array $ assert-type xs $ :: 'List 'Bool
-                      size $ assert-type
-                        if (number? size-raw)
-                          Option :some $ assert-type size-raw 'Number
-                          Option :none
-                        :: 'Option 'Number
-                      has-center? $ assert-type has-center-raw 'Bool
-                    if (option:none? size)
-                      repeat false $ pow 2 9
-                      map-indexed code-array $ fn (idx x)
-                        if
-                          and
-                            = (option:unwrap size) (count-bits idx)
-                            = has-center? $ = 1 $ pick-bit-at idx 4
-                          , false x
-              (:hydrate-storage data) data
-              _ $ do (eprintln "|unknown op" op) store
+              (:states cursor data)
+                assoc store :states $ decode-map-as
+                  respo.cursor/update-state-tree (:states store) cursor data
+                  :: 'Map 'Dynamic 'Dynamic
+              (:toggle index)
+                assoc store :code-array $ assoc (:code-array store) index $ not
+                  option:unwrap $ get (:code-array store) index
+              (:set-data codes) (assoc store :code-array codes)
+              (:select size center?)
+                assoc store :code-array $ update-selection (:code-array store) size center? true
+              (:unselect size center?)
+                assoc store :code-array $ update-selection (:code-array store) size center? false
+              (:hydrate-storage raw) (schema/decode-store raw)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'Map 'Tag 'Dynamic) 'Dynamic 'String 'Number
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
+            :args $ [] 'app.schema/Store 'app.schema/Op 'String 'Number
+          :tests $ [] $ %{} 'TestEntry (:name |state-subtree-and-legacy-store)
+            :code $ quote $ let
+                next $ updater schema/store
+                  schema/Op :states ([] :panel)
+                    {} $ :open? true
+                  , |regression 0
+                short $ schema/decode-store $ {}
+                  :states $ {} $ :cursor ([])
+                  :code-array $ [] true false false true
+              assert=
+                option:unwrap $ get-in (:states next) ([] :panel :data :open?)
+                , true
+              assert=
+                option:none? $ get (:states next) :states
+                , true
+              assert= (:code-array next) (:code-array schema/store)
+              assert=
+                count $ :code-array short
+                , 4
+            :tags $ #{} :regression
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
-          :require
-            respo.cursor :refer $ update-states
-            app.schema :as schema
-            |../assets/bitwise.js :refer $ pick-bit-at
+          :require $ app.schema :as schema
     'app.util $ %{} 'FileEntry
       :defs $ {}
+        'RangeHost $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ deftrait RangeHost
+            .select-node! $ :: 'Fn $ {}
+              :args $ [] 'app.util/RangeHost 'js-ffi.browser/DomElementHost
+              :return 'Unit
+          :examples $ []
+          :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
+            :names $ {} $ :select-node! |selectNode
+          :schema $ :: 'Trait
+        'SelectionHost $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ deftrait SelectionHost
+            .remove-all-ranges! $ :: 'Fn $ {}
+              :args $ [] 'app.util/SelectionHost
+              :return 'Unit
+            .add-range! $ :: 'Fn $ {}
+              :args $ [] 'app.util/SelectionHost 'app.util/RangeHost
+              :return 'Unit
+          :examples $ []
+          :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
+            :names $ {} (:add-range! |addRange) (:remove-all-ranges! |removeAllRanges)
+          :schema $ :: 'Trait
         'copy! $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn copy! (content)
-            hint-fn $ {} $ :async true
-            .?!writeText js/navigator.clipboard content
-            , &unit
+          :code $ quote $ defn copy! (content) (browser/clipboard-write-text! content) &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
             :args $ [] 'String
             :features $ #{} :js-ffi
         'highlight-node! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn highlight-node! (event)
-            let
-                native-event $ unsafe-coerce
-                  option:unwrap $ get event :event
-                  , 'JsObject
-                target $ js-get native-event $ str |target
-                r $ js/document.createRange
-                s $ js/getSelection
-              when (js-present? target) (.?!selectNode r target) (.?!removeAllRanges s) (.?!addRange s r)
+            if-let
+              target $ browser/event-target-element $ browser/event-host
+                option:unwrap $ get event :event
+              let
+                  selection $ js/getSelection
+                when (js-present? selection)
+                  let
+                      selected-range $ js-cast (js/document.createRange) 'app.util/RangeHost
+                      selected $ js-cast selection 'app.util/SelectionHost
+                    .select-node! selected-range target
+                    .remove-all-ranges! selected
+                    .add-range! selected selected-range
+                , &unit
               , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
+            :args $ [] $ :: 'Map 'Tag 'Dynamic
             :features $ #{} :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.util
+          :require $ js-ffi.browser :as browser
