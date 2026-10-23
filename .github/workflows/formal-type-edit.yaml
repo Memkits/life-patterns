@@ -1,0 +1,57 @@
+name: Temporary formal renderer boundary edit
+on:
+  pull_request:
+    paths:
+      - .github/workflows/formal-type-edit.yaml
+permissions:
+  contents: read
+jobs:
+  edit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: calcit-lang/setup-calcit@v1.5.0
+        with:
+          deps-file: deps.cirru
+          tools: calcit
+      - name: Match the released renderer contract with a checked dispatch bridge
+        run: |
+          set -euo pipefail
+          mkdir -p .calcit/formal-edit
+          git hash-object calcit.cirru > .calcit/formal-edit/before-blob.txt
+          node --input-type=module <<'NODE'
+          import {execFileSync} from 'node:child_process';
+          import {writeFileSync} from 'node:fs';
+          const run=(...args)=>JSON.parse(execFileSync('calcit',['calcit.cirru',...args,'--format','json'],{encoding:'utf8'}));
+          const target='app.main/render-app!',def=run('query','def',target).data;
+          if(def.code[3]?.[3]!=='dispatch!')throw Error('Unexpected dispatch argument');
+          const schema=def.schema;
+          let changes=0;
+          function update(n){if(!Array.isArray(n))return;for(let i=0;i<n.length;i++){if(n[i]==="'Enum"){n[i]="'Dynamic";changes++;}else update(n[i]);}}
+          update(schema);
+          if(changes!==1)throw Error('Unexpected dispatch schema count');
+          const args=schema.find(n=>Array.isArray(n)&&n[0]===':args')[1];
+          const renderer=args[1][2];
+          renderer.push([':features',['#{}',':js-ffi']]);
+          schema.push([':features',['#{}',':js-ffi']]);
+          const bridge=['fn',['raw-op'],['hint-fn',['{}',[':args',['[]',"'Dynamic"]],[':return',"'Unit"]]],['dispatch!',['decode-map-as','raw-op',"'Enum"]],'&unit'];
+          const operations=[['edit','schema',target,'--input-format','json-ast','--code',JSON.stringify(schema)],['tree','replace',target,'--path','@3.3','--input-format','json-ast','--code',JSON.stringify(bridge)],['edit','schema','app.main/reload!','--add-feature','js-ffi']];
+          const code=JSON.stringify(operations),dry=run('edit','transaction','--code',code,'--dry-run');
+          if(!dry.scoped_revision)throw Error('Missing scope');
+          const applied=run('edit','transaction','--code',code,'--expect-revision',dry.scoped_revision);
+          writeFileSync('.calcit/formal-edit/report.json',JSON.stringify({operations,dry,applied},null,2));
+          NODE
+          cp calcit.cirru .calcit/formal-edit/calcit.cirru
+      - uses: actions/upload-artifact@v7.0.0
+        with:
+          name: formal-type-edit
+          path: .calcit/formal-edit/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
