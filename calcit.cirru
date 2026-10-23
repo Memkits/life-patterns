@@ -76,6 +76,7 @@
                               :return 'Unit
                             copy! rule-hex
                             highlight-node! e
+                            , &unit
                         a $ {} (:inner-text |Set) (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
@@ -174,7 +175,7 @@
                             and (.some? filter-size)
                               = n $ .unwrap filter-size
                             {} $ :opacity 1
-                            , {}
+                            {}
                         :on-click $ fn (e d!)
                           hint-fn $ {}
                             :args $ [] (:: 'Map 'Tag 'Dynamic)
