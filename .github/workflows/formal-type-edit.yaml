@@ -1,0 +1,65 @@
+name: Temporary formal type boundary edit
+on:
+  pull_request:
+    paths:
+      - .github/workflows/formal-type-edit.yaml
+permissions:
+  contents: read
+jobs:
+  edit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: calcit-lang/setup-calcit@v1.5.0
+        with:
+          deps-file: deps.cirru
+          tools: calcit
+      - name: Edit only the reviewed boundaries
+        run: |
+          set -euo pipefail
+          mkdir -p .calcit/formal-edit
+          git hash-object calcit.cirru > .calcit/formal-edit/before-blob.txt
+          node --input-type=module <<'NODE'
+          import {execFileSync} from 'node:child_process';
+          import {writeFileSync} from 'node:fs';
+          const run=(...args)=>JSON.parse(execFileSync('calcit',['calcit.cirru',...args,'--format','json'],{encoding:'utf8'}));
+          const operations=[];
+          const reel=run('query','def','app.main/*reel').data.code;
+          if(reel[2]?.[0]!=='assert-type'||reel[2]?.[1]?.[0]!=='typed/new-reel')throw Error('Unexpected Reel initializer');
+          operations.push(['tree','raise','app.main/*reel','--path','@2.1']);
+          const hint=['hint-fn',['{}',[':args',['[]',['::',"'Map","'Tag","'Dynamic"],['::',"'Fn",['{}',[':args',['[]',"'Dynamic"]],[':return',"'Unit"]]]]],[':return',"'Unit"]]];
+          function has(node,symbol){return node===symbol||Array.isArray(node)&&node.some(x=>has(x,symbol));}
+          for(const target of ['app.comp.container/comp-filter','app.comp.container/comp-container']){
+            let matches=0;
+            function walk(node,path=[]){
+              if(!Array.isArray(node))return;
+              if(node[0]==='fn'&&JSON.stringify(node[1])===JSON.stringify(['e','d!'])&&(target.endsWith('/comp-filter')||has(node,'highlight-node!'))){
+                if(node[2]?.[0]==='hint-fn')throw Error('Boundary already annotated');
+                matches++;
+                operations.push(['tree','insert',target,'--path','@'+[...path,2].join('.'),'--at','before','--input-format','json-ast','--code',JSON.stringify(hint)]);
+              }
+              node.forEach((child,i)=>walk(child,[...path,i]));
+            }
+            walk(run('query','def',target).data.code);
+            if(matches!==(target.endsWith('/comp-filter')?3:1))throw Error('Unexpected boundary count');
+          }
+          const code=JSON.stringify(operations);
+          const dry=run('edit','transaction','--code',code,'--dry-run');
+          if(!dry.scoped_revision)throw Error('No scoped revision');
+          const applied=run('edit','transaction','--code',code,'--expect-revision',dry.scoped_revision);
+          writeFileSync('.calcit/formal-edit/report.json',JSON.stringify({operations,dry,applied},null,2));
+          NODE
+          cp calcit.cirru .calcit/formal-edit/calcit.cirru
+      - uses: actions/upload-artifact@v7.0.0
+        with:
+          name: formal-type-edit
+          path: .calcit/formal-edit/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
