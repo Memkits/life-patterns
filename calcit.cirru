@@ -116,27 +116,34 @@
                       :border-top $ str "|1px solid " $ hsl 0 0 90
                   div ({}) (<> "|Filled on next step:" css/font-fancy)
                   list-> ({})
-                    -> code-array
-                      map-indexed $ fn (idx v) ([] idx v)
-                      filter $ fn (pair)
-                        let[] (idx v) pair $ and v $ if (.none? filter-size) true
-                          and
+                    ->
+                      range $ count code-array
+                      filter $ fn (idx)
+                        let
+                            v $ .unwrap $ nth code-array idx
+                          and v $ if (.none? filter-size) true $ and
                             = (count-bits idx) (.unwrap filter-size)
                             = has-center? $ = 1 $ bit-and 1 (bit-shr idx 4)
-                      map $ fn (pair)
-                        let[] (idx v) pair $ [] idx $ comp-rule-card idx v
+                      map $ fn (idx)
+                        let
+                            v $ .unwrap $ nth code-array idx
+                          [] idx $ comp-rule-card idx v
                   =< nil 16
                   div ({}) (<> "|Empty on next step:" css/font-fancy)
                   list-> ({})
-                    -> code-array
-                      map-indexed $ fn (idx v) ([] idx v)
-                      filter $ fn (pair)
-                        let[] (idx v) pair $ and (not v)
-                          if (.none? filter-size) true $ and
-                            = (count-bits idx) (.unwrap filter-size)
-                            = has-center? $ = 1 $ bit-and 1 (bit-shr idx 4)
-                      map $ fn (pair)
-                        let[] (idx v) pair $ [] idx $ comp-rule-card idx v
+                    ->
+                      range $ count code-array
+                      filter $ fn (idx)
+                        let
+                            v $ .unwrap $ nth code-array idx
+                          and (not v)
+                            if (.none? filter-size) true $ and
+                              = (count-bits idx) (.unwrap filter-size)
+                              = has-center? $ = 1 $ bit-and 1 (bit-shr idx 4)
+                      map $ fn (idx)
+                        let
+                            v $ .unwrap $ nth code-array idx
+                          [] idx $ comp-rule-card idx v
                 .render alert-plugin
                 .render prompt-plugin
                 when dev? $ comp-typed-reel (>> states :reel) reel $ {}
