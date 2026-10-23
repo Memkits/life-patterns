@@ -17,12 +17,12 @@ jobs:
   test:
     runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: actions/checkout@v7.0.1
       with:
         persist-credentials: false
 
     - name: Set up Node.js
-      uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+      uses: actions/setup-node@v6.5.0
       with:
         node-version: 24
         package-manager-cache: false
@@ -34,7 +34,7 @@ jobs:
         yarn --version
 
     - name: Set up Calcit and Caps
-      uses: calcit-lang/setup-calcit@ca701be5a471759e442aa053cd100720bbe1f09f # v1.5.0
+      uses: calcit-lang/setup-calcit@v1.5.0
       with:
         deps-file: deps.cirru
         tools: calcit,caps
@@ -54,6 +54,8 @@ jobs:
         test ! -e package.cirru
         calcit calcit.cirru edit format
         git diff --exit-code -- calcit.cirru
+        # One-off formal graph acceptance; remove after this migration passes.
+        calcit calcit.cirru fix --workflow strict --verify --format edn
         calcit calcit.cirru --check-only --all-defs
         calcit calcit.cirru test --tag regression --require-match
         calcit calcit.cirru --check-only \
@@ -83,6 +85,15 @@ jobs:
       run: |
         set -euo pipefail
         yarn build
+
+    - name: Retain tested preview
+      if: github.event_name == 'pull_request'
+      uses: actions/upload-artifact@v7.0.0
+      with:
+        name: life-patterns-preview
+        path: dist/
+        retention-days: 7
+        if-no-files-found: error
 
     - name: Check COS credentials
       id: cos-credentials

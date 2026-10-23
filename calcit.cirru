@@ -38,9 +38,9 @@
                 store $ :store reel
                 states $ :states store
                 cursor $ decode-map-as
-                  option:unwrap-or (get states :cursor) ([])
+                  .unwrap-or (get states :cursor) ([])
                   :: 'List 'Dynamic
-                state $ app.schema/read-state-map $ option:unwrap-or (get states :data) nil
+                state $ app.schema/read-state-map $ .unwrap-or (get states :data) nil
                 filter-size-raw $ app.schema/read-filter state
                 filter-size $ :filter-size filter-size-raw
                 has-center? $ :has-center? filter-size-raw
@@ -109,9 +109,9 @@
                     -> code-array
                       map-indexed $ fn (idx v) ([] idx v)
                       filter $ fn (pair)
-                        let[] (idx v) pair $ and v $ if (option:none? filter-size) true
+                        let[] (idx v) pair $ and v $ if (.none? filter-size) true
                           and
-                            = (count-bits idx) (option:unwrap filter-size)
+                            = (count-bits idx) (.unwrap filter-size)
                             = has-center? $ = 1 $ bit-and 1 (bit-shr idx 4)
                       map $ fn (pair)
                         let[] (idx v) pair $ [] idx $ comp-rule-card idx v
@@ -122,8 +122,8 @@
                       map-indexed $ fn (idx v) ([] idx v)
                       filter $ fn (pair)
                         let[] (idx v) pair $ and (not v)
-                          if (option:none? filter-size) true $ and
-                            = (count-bits idx) (option:unwrap filter-size)
+                          if (.none? filter-size) true $ and
+                            = (count-bits idx) (.unwrap filter-size)
                             = has-center? $ = 1 $ bit-and 1 (bit-shr idx 4)
                       map $ fn (pair)
                         let[] (idx v) pair $ [] idx $ comp-rule-card idx v
@@ -157,8 +157,8 @@
                             :cursor :pointer
                             :opacity 0.2
                           if
-                            and (option:some? filter-size)
-                              = n $ option:unwrap filter-size
+                            and (.some? filter-size)
+                              = n $ .unwrap filter-size
                             {} $ :opacity 1
                             , {}
                         :on-click $ fn (e d!)
@@ -269,7 +269,7 @@
           :schema $ :: 'Map 'Tag 'String
         'skip-storage? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def skip-storage?
-            option:some? $ get-env |skip-storage
+            .some? $ get-env |skip-storage
           :examples $ []
           :schema $ :: 'Bool
       :ns $ %{} 'NsEntry (:doc |)
@@ -311,12 +311,12 @@
             repeat! 60 persist-storage!
             if (not config/skip-storage?)
               let
-                  raw $ browser/storage-get $ option:unwrap-or (get config/site :storage-key) |life-patterns
-                when (option:some? raw)
-                  restore-storage! $ option:unwrap raw
-            when (option:some? config/rule0)
+                  raw $ browser/storage-get $ .unwrap-or (get config/site :storage-key) |life-patterns
+                when (.some? raw)
+                  restore-storage! $ .unwrap raw
+            when (.some? config/rule0)
               dispatch! $ :: :set-data $ ->
-                app.comp.container/hex-to-binary-text $ option:unwrap config/rule0
+                app.comp.container/hex-to-binary-text $ .unwrap config/rule0
                 .split |
                 .map $ fn (x) (= x |1)
             println "|App started."
@@ -326,14 +326,14 @@
             :features $ #{} :js-ffi
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
-            option:unwrap $ respo.ffi.browser/query-selector |.app
+            .unwrap $ respo.ffi.browser/query-selector |.app
           :examples $ []
           :schema $ :: 'respo.dom/DomElement
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             when (not @*storage-error?)
               browser/storage-set!
-                option:unwrap-or (get config/site :storage-key) |life-patterns
+                .unwrap-or (get config/site :storage-key) |life-patterns
                 js-ffi.contract/expect-string "|Stored rule JSON" $ js/JSON.stringify $ to-cirru-edn
                   &struct:to-map $ :store @*reel
             , &unit
@@ -387,7 +387,7 @@
             :features $ #{} :js-ffi
         'ssr? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def ssr?
-            option:some? $ respo.ffi.browser/query-selector |meta.respo-ssr
+            .some? $ respo.ffi.browser/query-selector |meta.respo-ssr
           :examples $ []
           :schema $ :: 'Bool
       :ns $ %{} 'NsEntry (:doc |)
@@ -471,11 +471,11 @@
                   if (struct? raw) (&struct:to-map raw) raw
                   , 'app.schema/Store
               decode-map-as
-                option:unwrap-or
+                .unwrap-or
                   get (:states store) :cursor
                   []
                 :: 'List 'Dynamic
-              read-filter $ read-state-map $ option:unwrap-or
+              read-filter $ read-state-map $ .unwrap-or
                 get (:states store) :data
                 , nil
               assoc store :code-array $ checked-codes $ :code-array store
@@ -485,11 +485,11 @@
         'read-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-filter (raw)
             let
-                size $ option:unwrap-or (get raw :filter-size) nil
+                size $ .unwrap-or (get raw :filter-size) nil
               FilterState :filter-size
                 if (number? size) (Option :some size) (Option :none)
                 , :has-center? $ decode-map-as
-                  option:unwrap-or (get raw :has-center?) true
+                  .unwrap-or (get raw :has-center?) true
                   , 'Bool
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/FilterState)
@@ -533,12 +533,12 @@
             :tags $ #{} :regression
         'update-selection $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn update-selection (codes size center? selected?)
-            if (option:none? size)
+            if (.none? size)
               repeat selected? $ pow 2 9
               map-indexed codes $ fn (index value)
                 if
                   and
-                    = (option:unwrap size) (count-bits index)
+                    = (.unwrap size) (count-bits index)
                     = center? $ = 1 $ bit-and 1 (bit-shr index 4)
                   , selected? value
           :examples $ []
@@ -576,7 +576,7 @@
                   :: 'Map 'Dynamic 'Dynamic
               (:toggle index)
                 assoc store :code-array $ assoc (:code-array store) index $ not
-                  option:unwrap $ get (:code-array store) index
+                  .unwrap $ get (:code-array store) index
               (:set-data codes) (assoc store :code-array codes)
               (:select size center?)
                 assoc store :code-array $ update-selection (:code-array store) size center? true
@@ -596,10 +596,10 @@
                   :states $ {} $ :cursor ([])
                   :code-array $ [] true false false true
               assert=
-                option:unwrap $ get-in (:states next) ([] :panel :data :open?)
+                .unwrap $ get-in (:states next) ([] :panel :data :open?)
                 , true
               assert=
-                option:none? $ get (:states next) :states
+                .none? $ get (:states next) :states
                 , true
               assert= (:code-array next) (:code-array schema/store)
               assert=
@@ -642,7 +642,7 @@
           :code $ quote $ defn highlight-node! (event)
             if-let
               target $ browser/event-target-element $ browser/event-host
-                option:unwrap $ get event :event
+                .unwrap $ get event :event
               let
                   selection $ js/getSelection
                 when (js-present? selection)
