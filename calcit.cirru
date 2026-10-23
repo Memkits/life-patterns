@@ -85,6 +85,7 @@
                                 :args $ [] 'String
                               d! $ app.schema/Op :set-data $ -> text (hex-to-binary-text) (.split |)
                                 .map $ fn (x) (= x |1)
+                              , &unit
                         a $ {} (:inner-text "|View binary") (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!) (.show alert-plugin d! rule-str)
@@ -145,25 +146,25 @@
             :args $ [] $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
-            div
+            list->
               {} $ :style $ merge ui/row-middle
                 {} (:font-family ui/font-fancy) (:user-select :none)
-              div
-                {}
-                  :style $ merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
-                  :on-click $ fn (e d!)
-                    hint-fn $ {}
-                      :args $ [] (:: 'Map 'Tag 'Dynamic)
-                        :: 'Fn $ {}
-                          :args $ [] 'Dynamic
-                          :return 'Unit
-                      :return 'Unit
-                    on-change (Option :none) d!
-                <> |All
-              , &
+              concat
+                [] $ [] :all $ div
+                  {}
+                    :style $ merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
+                    :on-click $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {}
+                            :args $ [] 'Dynamic
+                            :return 'Unit
+                        :return 'Unit
+                      on-change (Option :none) d!
+                  <> |All
                 -> (range 10)
                   map $ fn (n)
-                    div
+                    [] n $ div
                       {}
                         :style $ merge ui/center
                           {} (:width 16) (:height 20) (:margin "|2px 4px")
@@ -185,21 +186,22 @@
                             :return 'Unit
                           on-change (Option :some n) d!
                       <> $ str n
-                =< 8 nil
-                div
-                  {}
-                    :on-click $ fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] 'Dynamic
-                            :return 'Unit
-                        :return 'Unit
-                      on-center (not has-center?) d!
-                    :style $ {}
-                      :color $ if has-center? (hsl 0 0 0) (hsl 0 0 70)
-                      :cursor :pointer
-                  <> |has-center?
+                []
+                  [] :space $ =< 8 nil
+                  [] :center $ div
+                    {}
+                      :on-click $ fn (e d!)
+                        hint-fn $ {}
+                          :args $ [] (:: 'Map 'Tag 'Dynamic)
+                            :: 'Fn $ {}
+                              :args $ [] 'Dynamic
+                              :return 'Unit
+                          :return 'Unit
+                        on-center (not has-center?) d!
+                      :style $ {}
+                        :color $ if has-center? (hsl 0 0 0) (hsl 0 0 70)
+                        :cursor :pointer
+                    <> |has-center?
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
             :args $ [] (:: 'Option 'Number) 'Bool
