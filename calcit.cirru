@@ -67,7 +67,15 @@
                       div
                         {} $ :class-name css/row-middle
                         span $ {} (:inner-text rule-hex)
-                          :on-click $ fn (e d!) (copy! rule-hex) (highlight-node! e)
+                          :on-click $ fn (e d!)
+                            hint-fn $ {}
+                              :args $ [] (:: 'Map 'Tag 'Dynamic)
+                                :: 'Fn $ {}
+                                  :args $ [] 'Dynamic
+                                  :return 'Unit
+                              :return 'Unit
+                            copy! rule-hex
+                            highlight-node! e
                         a $ {} (:inner-text |Set) (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
@@ -143,6 +151,12 @@
                 {}
                   :style $ merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
                   :on-click $ fn (e d!)
+                    hint-fn $ {}
+                      :args $ [] (:: 'Map 'Tag 'Dynamic)
+                        :: 'Fn $ {}
+                          :args $ [] 'Dynamic
+                          :return 'Unit
+                      :return 'Unit
                     on-change (Option :none) d!
                 <> |All
               , &
@@ -162,12 +176,24 @@
                             {} $ :opacity 1
                             , {}
                         :on-click $ fn (e d!)
+                          hint-fn $ {}
+                            :args $ [] (:: 'Map 'Tag 'Dynamic)
+                              :: 'Fn $ {}
+                                :args $ [] 'Dynamic
+                                :return 'Unit
+                            :return 'Unit
                           on-change (Option :some n) d!
                       <> $ str n
                 =< 8 nil
                 div
                   {}
                     :on-click $ fn (e d!)
+                      hint-fn $ {}
+                        :args $ [] (:: 'Map 'Tag 'Dynamic)
+                          :: 'Fn $ {}
+                            :args $ [] 'Dynamic
+                            :return 'Unit
+                        :return 'Unit
                       on-center (not has-center?) d!
                     :style $ {}
                       :color $ if has-center? (hsl 0 0 0) (hsl 0 0 70)
@@ -277,8 +303,7 @@
     'app.main $ %{} 'FileEntry
       :defs $ {}
         '*reel $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defref *reel
-            assert-type (typed/new-reel schema/store) (:: 'reel.typed/State 'app.schema/Op 'app.schema/Store)
+          :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
           :schema $ :: 'Ref $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
         '*storage-error? $ %{} 'CodeEntry (:doc |)
