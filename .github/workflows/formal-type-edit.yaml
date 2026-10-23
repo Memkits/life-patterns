@@ -1,0 +1,56 @@
+name: Temporary formal keyed children edit
+on:
+  pull_request:
+    paths:
+      - .github/workflows/formal-type-edit.yaml
+permissions:
+  contents: read
+jobs:
+  edit:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6.5.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - uses: calcit-lang/setup-calcit@v1.5.0
+        with:
+          deps-file: deps.cirru
+          tools: calcit
+      - name: Preserve fixed children and bind dynamic child keys
+        run: |
+          set -euo pipefail
+          mkdir -p .calcit/formal-edit
+          git hash-object calcit.cirru > .calcit/formal-edit/before-blob.txt
+          node --input-type=module <<'NODE'
+          import {execFileSync} from 'node:child_process';
+          import {writeFileSync} from 'node:fs';
+          const run=(...args)=>JSON.parse(execFileSync('calcit',['calcit.cirru',...args,'--format','json'],{encoding:'utf8'}));
+          const target='app.comp.container/comp-filter';
+          const root=run('query','def',target).data.code[3];
+          if(root.length!==7||root[0]!=='div'||root[3]!=='&'||root[4]?.[2]?.[1]?.[0]!=='fn'||root[4][2][1][1][0]!=='n')throw Error('Unexpected root children');
+          const prompt=run('tree','show','app.comp.container/comp-container','--path','@3.2.2.4.2.2.3.1.4.1.2.3').tree;
+          if(prompt[0]!=='fn'||prompt[1][0]!=='text'||prompt.at(-1)?.[0]!=='d!')throw Error('Unexpected prompt callback');
+          const replacement=['list->','props',['concat',['[]',['[]',':all','all']],'numbers',['[]',['[]',':space','space'],['[]',':center','center']]]];
+          const operations=[
+            ['tree','insert','app.comp.container/comp-container','--path','@3.2.2.4.2.2.3.1.4.1.2.3','--at','append-child','--input-format','cirru','--code','quote &unit'],
+            ['tree','wrap',target,'--path','@3.4.2.1.2','--input-format','json-ast','--code','["[]","n","self"]'],
+            ['tree','rewrite',target,'--path','@3','--input-format','json-ast','--code',JSON.stringify(replacement),'--with','props=1','--with','all=2','--with','numbers=4','--with','space=5','--with','center=6']
+          ];
+          const code=JSON.stringify(operations);
+          const dry=run('edit','transaction','--code',code,'--dry-run');
+          if(!dry.scoped_revision)throw Error('Missing scope');
+          const applied=run('edit','transaction','--code',code,'--expect-revision',dry.scoped_revision);
+          writeFileSync('.calcit/formal-edit/report.json',JSON.stringify({operations,dry,applied},null,2));
+          NODE
+          cp calcit.cirru .calcit/formal-edit/calcit.cirru
+      - uses: actions/upload-artifact@v7.0.0
+        with:
+          name: formal-type-edit
+          path: .calcit/formal-edit/
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: error
