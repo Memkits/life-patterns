@@ -40,8 +40,9 @@ jobs:
           const renderer=args[1][2];
           renderer.push([':features',['#{}',':js-ffi']]);
           schema.push([':features',['#{}',':js-ffi']]);
+          const canonical=['::',"'Fn",schema.filter(n=>!Array.isArray(n)||n[0]!==':kind')];
           const bridge=['fn',['raw-op'],['hint-fn',['{}',[':args',['[]',"'Dynamic"]],[':return',"'Unit"]]],['dispatch!',['decode-map-as','raw-op',"'Enum"]],'&unit'];
-          const operations=[['edit','schema',target,'--input-format','json-ast','--code',JSON.stringify(schema)],['tree','replace',target,'--path','@3.3','--input-format','json-ast','--code',JSON.stringify(bridge)],['edit','schema','app.main/reload!','--add-feature','js-ffi']];
+          const operations=[['edit','schema',target,'--input-format','json-ast','--code',JSON.stringify(canonical)],['tree','replace',target,'--path','@3.3','--input-format','json-ast','--code',JSON.stringify(bridge)],['edit','schema','app.main/reload!','--add-feature','js-ffi']];
           const code=JSON.stringify(operations),dry=run('edit','transaction','--code',code,'--dry-run');
           if(!dry.scoped_revision)throw Error('Missing scope');
           const applied=run('edit','transaction','--code',code,'--expect-revision',dry.scoped_revision);
