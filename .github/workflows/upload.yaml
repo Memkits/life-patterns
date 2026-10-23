@@ -54,8 +54,6 @@ jobs:
         test ! -e package.cirru
         calcit calcit.cirru edit format
         git diff --exit-code -- calcit.cirru
-        # One-off formal graph acceptance; remove after this migration passes.
-        calcit calcit.cirru fix --workflow strict --verify --format edn
         calcit calcit.cirru --check-only --all-defs
         calcit calcit.cirru test --tag regression --require-match
         calcit calcit.cirru --check-only \
