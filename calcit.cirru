@@ -392,7 +392,7 @@
                 hint-fn $ {}
                   :args $ [] 'Dynamic
                   :return 'Unit
-                dispatch! $ decode-map-as raw-op 'Enum
+                if (enum? raw-op) (dispatch! raw-op) (raise "|Expected an Enum operation")
                 , &unit
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Unit)
