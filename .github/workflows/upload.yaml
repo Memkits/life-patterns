@@ -64,7 +64,7 @@ jobs:
           --ns app.comp.container --ns app.config --ns app.main \
           --ns app.schema --ns app.updater --ns app.util \
           --summary-only --format json
-        calcit calcit.cirru fix --workflow strict --verify --format json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
+        calcit calcit.cirru fix --workflow strict --verify --format json | tee acceptance/strict.json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
 
     - name: Select CDN asset path
       id: asset-path
