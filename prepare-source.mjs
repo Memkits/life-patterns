@@ -92,6 +92,7 @@ function ownCallbacks(node,path,id){
     const old=structuredClone(node),p='@'+path.join('.');
     assert.deepEqual(JSON.parse(run('tree','show',id,'--path',p,'--format','json')).tree,old);
     node.splice(2,0,structuredClone(hint));
+    if(id==='app.comp.container/comp-container'&&old[2][1]==='alert-plugin')node.push('&unit');
     ops.push(['tree','replace',id,'--path',p,'--input-format','json-ast','--code',JSON.stringify(node)]);return;
   }
   node.forEach((child,i)=>ownCallbacks(child,[...path,i],id));
