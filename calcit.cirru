@@ -24,11 +24,11 @@
             :features $ #{} :js-ffi
         'calc-code-idx $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn calc-code-idx (xs)
-            assert "|size of rule is 9" $ = 9 $ count xs
+            assert "|size of rule is 9" $ = 9 $ .len xs
             -> xs
               map-indexed $ fn (idx bit)
                 * bit $ pow 2 $ - 8 idx
-              reduce 0 &+
+              .foldl 0 &+
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Number)
             :args $ [] $ :: 'List 'Number
@@ -54,7 +54,7 @@
               div
                 {} $ :class-name $ str-spaced css/global css/fullscreen css/column
                 div
-                  {} $ :style $ merge ui/row-middle
+                  {} $ :style $ .merge ui/row-middle
                     {} (:padding "|2px 8px") (:align-items :flex-start)
                   <> "|Life Patterns" $ {} $ :font-family ui/font-fancy
                   =< 8 nil
@@ -62,7 +62,7 @@
                       rule-str $ encode-rules code-array
                       rule-hex $ binary-to-hex-text rule-str
                     div
-                      {} $ :style $ merge ui/expand
+                      {} $ :style $ .merge ui/expand
                         {} (:font-family ui/font-code) (:font-size 10) (:line-height |10px) (:word-break :break-all) (:cursor :pointer)
                       div
                         {} $ :class-name css/row-middle
@@ -80,6 +80,12 @@
                         a $ {} (:inner-text |Set) (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
+                            hint-fn $ {}
+                              :args $ [] (:: 'Map 'Tag 'Dynamic)
+                                :: 'Fn $ {}
+                                  :args $ [] 'Dynamic
+                                  :return 'Unit
+                              :return 'Unit
                             .show prompt-plugin d! $ fn (text)
                               hint-fn $ {} (:return 'Unit)
                                 :args $ [] 'String
@@ -88,12 +94,20 @@
                               , &unit
                         a $ {} (:inner-text "|View binary") (:class-name css/link)
                           :style $ {}
-                          :on-click $ fn (e d!) (.show alert-plugin d! rule-str)
+                          :on-click $ fn (e d!)
+                            hint-fn $ {}
+                              :args $ [] (:: 'Map 'Tag 'Dynamic)
+                                :: 'Fn $ {}
+                                  :args $ [] 'Dynamic
+                                  :return 'Unit
+                              :return 'Unit
+                            .show alert-plugin d! rule-str
+                            , &unit
                         a $ {} (:inner-text "|Open game!") (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!) (open-game! rule-hex)
                 div
-                  {} $ :style $ merge ui/row-middle
+                  {} $ :style $ .merge ui/row-middle
                     {} $ :padding "|4 8px"
                   comp-filter filter-size has-center?
                     fn (n d!)
@@ -111,13 +125,13 @@
                     :on-click $ fn (e d!)
                       d! $ app.schema/Op :unselect filter-size has-center?
                 div
-                  {} $ :style $ merge ui/expand
+                  {} $ :style $ .merge ui/expand
                     {} (:padding "|0 6px") (:padding-bottom 120) (:padding-top 20)
                       :border-top $ str "|1px solid " $ hsl 0 0 90
                   div ({}) (<> "|Filled on next step:" css/font-fancy)
                   list-> ({})
                     ->
-                      range $ count code-array
+                      range $ .len code-array
                       filter $ fn (idx)
                         let
                             v $ .unwrap $ nth code-array idx
@@ -132,7 +146,7 @@
                   div ({}) (<> "|Empty on next step:" css/font-fancy)
                   list-> ({})
                     ->
-                      range $ count code-array
+                      range $ .len code-array
                       filter $ fn (idx)
                         let
                             v $ .unwrap $ nth code-array idx
@@ -154,12 +168,12 @@
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
             list->
-              {} $ :style $ merge ui/row-middle
+              {} $ :style $ .merge ui/row-middle
                 {} (:font-family ui/font-fancy) (:user-select :none)
               concat
                 [] $ [] :all $ div
                   {}
-                    :style $ merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
+                    :style $ .merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
                     :on-click $ fn (e d!)
                       hint-fn $ {}
                         :args $ [] (:: 'Map 'Tag 'Dynamic)
@@ -173,7 +187,7 @@
                   map $ fn (n)
                     [] n $ div
                       {}
-                        :style $ merge ui/center
+                        :style $ .merge ui/center
                           {} (:width 16) (:height 20) (:margin "|2px 4px")
                             :background-color $ hsl 0 0 96
                             :border-radius |4px
@@ -224,7 +238,7 @@
           :code $ quote $ defn comp-rule-card (idx result)
             div
               {}
-                :style $ merge $ {} (:margin-top 4) (:margin-left 4)
+                :style $ .merge $ {} (:margin-top 4) (:margin-left 4)
                   :border $ str "|1px solid " $ hsl 0 0 90
                   :display :inline-block
                   :width 39
@@ -477,8 +491,8 @@
                 codes $ decode-map-as raw $ :: 'List 'Bool
               if
                 and
-                  > (count codes) 0
-                  integer? $ / (count codes) 4
+                  > (.len codes) 0
+                  integer? $ / (.len codes) 4
                 , codes $ raise "|Rule data must contain a nonempty multiple of four Boolean bits"
           :examples $ []
           :schema $ :: 'Fn $ {}
@@ -559,7 +573,10 @@
       :defs $ {}
         'count-bits $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn count-bits (n)
-            reduce (range 9) 0 $ fn (total index)
+            .foldl (range 9) 0 $ fn (total index)
+              hint-fn $ {}
+                :args $ [] 'Number 'Number
+                :return 'Number
               + total $ bit-and 1 $ bit-shr n index
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'Number)
@@ -570,7 +587,7 @@
               assert= (count-bits 16) 1
               assert= (count-bits 511) 9
               assert=
-                reduce
+                .foldl
                   map (range 512) count-bits
                   , 0 +
                 , 2304
@@ -596,17 +613,17 @@
                 update-selection ([] false false false false) (Option :none) false true
                 repeat true 512
               assert=
-                count $ filter
+                .len $ filter
                   update-selection codes (Option :some 4) true true
                   fn (bit) bit
                 , 56
               assert=
-                count $ filter
+                .len $ filter
                   update-selection codes (Option :some 4) false true
                   fn (bit) bit
                 , 70
               assert=
-                count $ filter
+                .len $ filter
                   update-selection (repeat true 512) (Option :some 4) true false
                   fn (bit) bit
                 , 456
@@ -647,7 +664,7 @@
                 , true
               assert= (:code-array next) (:code-array schema/store)
               assert=
-                count $ :code-array short
+                .len $ :code-array short
                 , 4
             :tags $ #{} :regression
       :ns $ %{} 'NsEntry (:doc |)
