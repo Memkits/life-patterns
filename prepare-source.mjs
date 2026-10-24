@@ -70,8 +70,34 @@ assert.equal(run('-v').trim(),'0.30.1');run('docs','agents','--contract');
 const before=inventory(),config=q('config'),namespaces=q('ns').namespaces.map(ns=>q('ns',ns));
 assert.equal(before.reduce((n,d)=>n+d.examples.length,0),0);
 assert.deepEqual(before,normalizeSets(JSON.parse(readFileSync('acceptance/reviewed.json','utf8'))));
+let baseline;
+try{baseline=run('fix','--workflow','strict','--verify','--format','json');}
+catch(error){assert.equal(error.status,1);baseline=error.stdout;}
+JSON.parse(baseline);writeFileSync('acceptance/baseline-strict.json',baseline);
 const expected=structuredClone(before),{ops,counts}=select(expected,true);
 assert.deepEqual(counts,{code:{merge:8,count:5,reduce:2},tests:{reduce:1,count:4}});assert.equal(ops.length,18);
+const eventHint=['hint-fn',['{}',[':args',['[]',['::',"'Map","'Tag","'Dynamic"],['::',"'Fn",['{}',[':args',['[]',"'Dynamic"]],[':return',"'Unit"]]]]],[':return',"'Unit"]]];
+const numberHint=['hint-fn',['{}',[':args',['[]',"'Number","'Number"]],[':return',"'Number"]]];
+let eventContracts=0,numberContracts=0;
+function ownCallbacks(node,path,id){
+  if(!Array.isArray(node))return;
+  if(['quote','quasiquote',';','comment','defmacro'].includes(node[0]))return;
+  let hint;
+  if(id==='app.comp.container/comp-container'&&node[0]==='fn'&&node[2]?.[0]==='.show'&&['prompt-plugin','alert-plugin'].includes(node[2][1])){
+    assert.deepEqual(node[1],['e','d!']);hint=eventHint;eventContracts++;
+  }else if(id==='app.updater/count-bits'&&node[0]==='fn'){
+    assert.deepEqual(node[1],['total','index']);hint=numberHint;numberContracts++;
+  }
+  if(hint){
+    const old=structuredClone(node),p='@'+path.join('.');
+    assert.deepEqual(JSON.parse(run('tree','show',id,'--path',p,'--format','json')).tree,old);
+    node.splice(2,0,structuredClone(hint));
+    ops.push(['tree','replace',id,'--path',p,'--input-format','json-ast','--code',JSON.stringify(node)]);return;
+  }
+  node.forEach((child,i)=>ownCallbacks(child,[...path,i],id));
+}
+expected.forEach(d=>ownCallbacks(d.code,[],d.id));
+assert.equal(eventContracts,2);assert.equal(numberContracts,1);assert.equal(ops.length,21);
 writeFileSync('acceptance/before.json',JSON.stringify(before,null,2));
 writeFileSync('acceptance/operations.json',JSON.stringify(ops,null,2));writeFileSync('acceptance/counts.json',JSON.stringify(counts,null,2));
 const args=['edit','transaction','--file','acceptance/operations.json','--format','json'];
@@ -81,4 +107,4 @@ assert.deepEqual(inventory(),expected);assert.deepEqual(q('config'),config);
 assert.deepEqual(q('ns').namespaces.map(ns=>q('ns',ns)),namespaces);
 writeFileSync('acceptance/after.json',JSON.stringify(expected,null,2));
 writeFileSync('acceptance/snapshot-blob.txt',execFileSync('git',['hash-object','calcit.cirru'],{encoding:'utf8'}));
-console.log(JSON.stringify({guardedDefinitions:before.length,operations:ops.length,counts,unchanged:'operands/defaults/schemas/FFI/metadata/imports/config/testnames/tags/expectedvalues'}));
+console.log(JSON.stringify({guardedDefinitions:before.length,operations:ops.length,counts,eventContracts,numberContracts,unchanged:'operands/defaults/schemas/FFI/metadata/imports/config/testnames/tags/expectedvalues'}));
