@@ -2,7 +2,7 @@ name: Upload
 
 on:
   push:
-    branches: [main]
+    branches: [main, prepare/life-patterns-public031]
   pull_request: {}
 
 permissions:
@@ -47,19 +47,24 @@ jobs:
         yarn install --immutable
         caps verify --toolchain
 
+    - name: Prepare reviewed source transaction
+      run: node prepare-source.mjs
+
     - name: Validate Calcit snapshot and types
       run: |
         set -euo pipefail
         test ! -e compact.cirru
         test ! -e package.cirru
+        prepared_blob=$(git hash-object calcit.cirru)
         calcit calcit.cirru edit format
-        git diff --exit-code -- calcit.cirru
+        test "$prepared_blob" = "$(git hash-object calcit.cirru)"
         calcit calcit.cirru --check-only --all-defs
         calcit calcit.cirru test --tag regression --require-match
         calcit calcit.cirru --check-only \
           --ns app.comp.container --ns app.config --ns app.main \
           --ns app.schema --ns app.updater --ns app.util \
           --summary-only --format json
+        calcit calcit.cirru fix --workflow strict --verify --format json | jq -e '.data.workflow.status == "passed" and .diagnostics == []'
 
     - name: Select CDN asset path
       id: asset-path
@@ -93,9 +98,19 @@ jobs:
         retention-days: 7
         if-no-files-found: error
 
+    - name: Save prepared source evidence
+      if: always()
+      uses: actions/upload-artifact@v7.0.0
+      with:
+        name: prepared-source
+        path: |
+          calcit.cirru
+          acceptance
+        if-no-files-found: error
+
     - name: Check COS credentials
       id: cos-credentials
-      if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+      if: github.ref != 'refs/heads/prepare/life-patterns-public031' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository)
       env:
         COS_BUCKET: ${{ secrets.COS_BUCKET }}
         COS_SECRET_ID: ${{ secrets.COS_SECRET_ID }}
