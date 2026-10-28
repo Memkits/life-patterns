@@ -8,7 +8,7 @@ Demo http://repo.memkits.org/life-patterns/
 
 ### Usages
 
-Use formal Calcit/procs **0.30.1**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
+Use formal Calcit/procs **0.31.0**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
 and `deps.cirru`. Run `caps --strict --ci`, `yarn install --immutable`, then `yarn dev`
 or `yarn build`. Development compiles once before starting Vite. Run
 `calcit calcit.cirru js -w` in another terminal for live Calcit edits; no process
@@ -20,7 +20,21 @@ independent upload checker or repeated migration diagnostic suite. Production
 assets use `https://cos-sh.tiye.me/Memkits/life-patterns/`; preview paths are
 isolated by PR, run and attempt. Original server sync paths remain unchanged.
 
-### 0.30.1 迁移注意事项
+### 0.31.0 使用者影响
+
+升级后重新安装完整依赖图并刷新页面。Calcit/procs 使用正式0.31.0，
+Respo0.17.0-alpha.4、Reel0.7.0-alpha.4、Alerts0.11.0-alpha.3、UI0.9.0-alpha.4
+仍为已发布的精确 alpha tag，js-ffi 为正式0.2.7，不把全部模块称作稳定正式版。
+本次为既有业务/Reel/Alerts Enum 入口绑定 dispatch 类型槽，保留原解码；
+Set 提示事件执行后明确返回 Unit。Prompt 开放返回合同见
+[Alerts #104](https://github.com/Respo/alerts.calcit/issues/104)。
+
+规则长度、短 hex、位序、选择算法、HUD、存档和自动保存保护均保持；
+原三项测试保留业务断言，仅将一处路径读取的 Option unwrap 改为 Result :ok true 比较。
+不修改类型门禁、COS 内置校验或部署路径，不增加验证脚本。
+
+### 0.30.1 迁移记录（历史）
+
 
 模块均采用正式 tag。规则初始长度仍为 512，Set 仍允许有效的短 hex；位序、中心位、All 忽略中心开关以及指定计数下的批量选择语义不变。修复旧 UI 把 dispatch 拆成多个参数的问题，统一传入一个 Enum。
 

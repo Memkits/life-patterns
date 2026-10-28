@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |alerts.calcit/ |js-ffi/
-      :type-slots $ {}
+      :type-slots $ {} $ :dispatch-op |app.schema/DispatchOp
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -92,6 +92,7 @@
                               d! $ app.schema/Op :set-data $ -> text (hex-to-binary-text) (.split |)
                                 .map $ fn (x) (= x |1)
                               , &unit
+                            , &unit
                         a $ {} (:inner-text "|View binary") (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
@@ -463,6 +464,11 @@
             |@calcit/procs :refer $ to-cirru-edn extract-cirru-edn
     'app.schema $ %{} 'FileEntry
       :defs $ {}
+        'DispatchOp $ %{} 'CodeEntry
+          :doc "|Shared Enum entry type for app operations, Reel controls and Alerts states; dispatch! decodes each before updating typed state."
+          :code $ quote $ def DispatchOp (:: :unhandled)
+          :examples $ []
+          :schema $ :: 'Enum
         'FilterState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct FilterState
             :filter-size $ :: 'Option 'Number
@@ -657,8 +663,8 @@
                   :states $ {} $ :cursor ([])
                   :code-array $ [] true false false true
               assert=
-                .unwrap $ get-in (:states next) ([] :panel :data :open?)
-                , true
+                get-in (:states next) ([] :panel :data :open?)
+                Result :ok true
               assert=
                 .none? $ get (:states next) :states
                 , true
