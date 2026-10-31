@@ -14,14 +14,12 @@
           :code $ quote $ def base-rule
             repeat (pow 2 9) 0
           :examples $ []
-          :schema $ :: 'List 'Number
+          :schema $ quote $ List Number
         'binary-to-hex-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn binary-to-hex-text (text)
             js-ffi.contract/expect-string |binary-to-hex-text $ binary-to-hex text
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String (-> String) (:features :js-ffi)
         'calc-code-idx $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn calc-code-idx (xs)
             assert "|size of rule is 9" $ = 9 $ .len xs
@@ -30,8 +28,7 @@
                 * bit $ pow 2 $ - 8 idx
               .foldl 0 &+
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Number)
-            :args $ [] $ :: 'List 'Number
+          :schema $ quote $ Fn (List Number) (-> Number)
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (reel)
             let
@@ -68,27 +65,20 @@
                         {} $ :class-name css/row-middle
                         span $ {} (:inner-text rule-hex)
                           :on-click $ fn (e d!)
-                            hint-fn $ {}
-                              :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                :: 'Fn $ {}
-                                  :args $ [] 'Dynamic
-                                  :return 'Unit
-                              :return 'Unit
+                            hint-fn $ Fn (Map Tag Dynamic)
+                              Fn Dynamic $ -> Unit
+                              -> Unit
                             copy! rule-hex
                             highlight-node! e
                             , &unit
                         a $ {} (:inner-text |Set) (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
-                            hint-fn $ {}
-                              :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                :: 'Fn $ {}
-                                  :args $ [] 'Dynamic
-                                  :return 'Unit
-                              :return 'Unit
+                            hint-fn $ Fn (Map Tag Dynamic)
+                              Fn Dynamic $ -> Unit
+                              -> Unit
                             .show prompt-plugin d! $ fn (text)
-                              hint-fn $ {} (:return 'Unit)
-                                :args $ [] 'String
+                              hint-fn $ Fn String $ -> Unit
                               d! $ app.schema/Op :set-data $ -> text (hex-to-binary-text) (.split |)
                                 .map $ fn (x) (= x |1)
                               , &unit
@@ -96,13 +86,10 @@
                         a $ {} (:inner-text "|View binary") (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
-                            hint-fn $ {}
-                              :args $ [] (:: 'Map 'Tag 'Dynamic)
-                                :: 'Fn $ {}
-                                  :args $ [] 'Dynamic
-                                  :return 'Unit
-                              :return 'Unit
-                            .show alert-plugin d! rule-str
+                            hint-fn $ Fn (Map Tag Dynamic)
+                              Fn Dynamic $ -> Unit
+                              -> Unit
+                            .show alert-plugin d! $ Option :some rule-str
                             , &unit
                         a $ {} (:inner-text "|Open game!") (:class-name css/link)
                           :style $ {}
@@ -164,8 +151,7 @@
                 when dev? $ comp-typed-reel (>> states :reel) reel $ {}
                 when dev? $ comp-inspect |Store store $ {} (:bottom 0)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
+          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store) (-> respo.schema/Component)
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
             list->
@@ -176,12 +162,9 @@
                   {}
                     :style $ .merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
                     :on-click $ fn (e d!)
-                      hint-fn $ {}
-                        :args $ [] (:: 'Map 'Tag 'Dynamic)
-                          :: 'Fn $ {}
-                            :args $ [] 'Dynamic
-                            :return 'Unit
-                        :return 'Unit
+                      hint-fn $ Fn (Map Tag Dynamic)
+                        Fn Dynamic $ -> Unit
+                        -> Unit
                       on-change (Option :none) d!
                   <> |All
                 -> (range 10)
@@ -200,12 +183,9 @@
                             {} $ :opacity 1
                             {}
                         :on-click $ fn (e d!)
-                          hint-fn $ {}
-                            :args $ [] (:: 'Map 'Tag 'Dynamic)
-                              :: 'Fn $ {}
-                                :args $ [] 'Dynamic
-                                :return 'Unit
-                            :return 'Unit
+                          hint-fn $ Fn (Map Tag Dynamic)
+                            Fn Dynamic $ -> Unit
+                            -> Unit
                           on-change (Option :some n) d!
                       <> $ str n
                 []
@@ -213,28 +193,23 @@
                   [] :center $ div
                     {}
                       :on-click $ fn (e d!)
-                        hint-fn $ {}
-                          :args $ [] (:: 'Map 'Tag 'Dynamic)
-                            :: 'Fn $ {}
-                              :args $ [] 'Dynamic
-                              :return 'Unit
-                          :return 'Unit
+                        hint-fn $ Fn (Map Tag Dynamic)
+                          Fn Dynamic $ -> Unit
+                          -> Unit
                         on-center (not has-center?) d!
                       :style $ {}
                         :color $ if has-center? (hsl 0 0 0) (hsl 0 0 70)
                         :cursor :pointer
                     <> |has-center?
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Component)
-            :args $ [] (:: 'Option 'Number) 'Bool
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] (:: 'Option 'Number)
-                  :: 'Fn $ {} (:return 'Unit)
-                    :args $ [] 'Enum
-              :: 'Fn $ {} (:return 'Unit)
-                :args $ [] 'Bool $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Enum
+          :schema $ quote $ Fn (Option Number) Bool
+            Fn (Option Number)
+              Fn Enum $ -> Unit
+              -> Unit
+            Fn Bool
+              Fn Enum $ -> Unit
+              -> Unit
+            -> respo.schema/Component
         'comp-rule-card $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn comp-rule-card (idx result)
             div
@@ -259,36 +234,30 @@
                         :opacity $ if result 1 0.2
                         :cursor :pointer
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'respo.schema/Element)
-            :args $ [] 'Number 'Bool
+          :schema $ quote $ Fn Number Bool (-> respo.schema/Element)
         'encode-rules $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn encode-rules (codes)
             -> codes
               map $ fn (x) (if x |1 |0)
               join-string |
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] $ :: 'List 'Bool
+          :schema $ quote $ Fn (List Bool) (-> String)
         'hex-to-binary-text $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn hex-to-binary-text (text)
             js-ffi.contract/expect-string |hex-to-binary-text $ hex-to-binary text
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'String)
-            :args $ [] 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String (-> String) (:features :js-ffi)
         'open-game! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn open-game! (rule-hex)
             js-ffi.browser/window-open $ str |https://webgpu.art/fungi?rule= rule-hex
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String (-> Unit) (:features :js-ffi)
         'style-binary-preview $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstyle style-binary-preview
             {} $ |& $ {} (:word-break :break-all) (:max-width |400px) (:display :inline-block) (:line-height 20)
           :examples $ []
-          :schema $ :: 'String
+          :schema $ quote String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require (respo-ui.core :as ui) (respo-ui.css :as css)
@@ -308,21 +277,21 @@
         'dev? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def dev? true
           :examples $ []
-          :schema $ :: 'Bool
+          :schema $ quote Bool
         'rule0 $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def rule0 (get-env |rule)
           :examples $ []
-          :schema $ :: 'Option 'String
+          :schema $ quote $ Option String
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
             {} (:title "|Life pattern") (:icon |http://cdn.tiye.me/logo/mvc-works.png) (:storage-key |life-patterns)
           :examples $ []
-          :schema $ :: 'Map 'Tag 'String
+          :schema $ quote $ Map Tag String
         'skip-storage? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def skip-storage?
             .some? $ get-env |skip-storage
           :examples $ []
-          :schema $ :: 'Bool
+          :schema $ quote Bool
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.config
     'app.main $ %{} 'FileEntry
@@ -330,11 +299,11 @@
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
-          :schema $ :: 'Ref $ :: 'reel.typed/State 'app.schema/Op 'app.schema/Store
+          :schema $ quote $ Ref (reel.typed/State app.schema/Op app.schema/Store)
         '*storage-error? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *storage-error? false
           :examples $ []
-          :schema $ :: 'Ref 'Bool
+          :schema $ quote $ Ref Bool
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             let
@@ -346,9 +315,7 @@
                   typed/record-op updater @*reel (schema/decode-op op) op-id op-time
               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Enum
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Enum (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -371,14 +338,12 @@
                 .map $ fn (x) (= x |1)
             println "|App started."
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
             .unwrap $ respo.ffi.browser/query-selector |.app
           :examples $ []
-          :schema $ :: 'respo.dom/DomElement
+          :schema $ quote respo.dom/DomElement
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             when (not @*storage-error?)
@@ -388,36 +353,29 @@
                   &struct:to-map $ :store @*reel
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (remove-watch! *reel :changes) (clear-cache!)
             add-watch! *reel :changes $ fn (_reel _previous) (render-app! render!) &unit
             reset! *reel $ typed/refresh updater @*reel schema/store
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! (renderer)
             renderer mount-target (comp-container @*reel)
               fn (raw-op)
-                hint-fn $ {}
-                  :args $ [] 'Dynamic
-                  :return 'Unit
+                hint-fn $ Fn Dynamic $ -> Unit
                 if (enum? raw-op) (dispatch! raw-op) (raise "|Expected an Enum operation")
                 , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] $ :: 'Fn
-              {} (:return 'Unit)
-                :args $ [] 'respo.dom/DomElement 'respo.schema/Component $ :: 'Fn
-                  {} (:return 'Unit)
-                    :args $ [] 'Dynamic
-                :features $ #{} :js-ffi
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn
+            Fn respo.dom/DomElement respo.schema/Component
+              Fn Dynamic $ -> Unit
+              -> Unit
+              :features :js-ffi
+            -> Unit
+            :features :js-ffi
         'repeat! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn repeat! (duration cb)
             browser/set-timeout!
@@ -425,11 +383,10 @@
               * 1000 duration
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Number $ :: 'Fn
-              {} (:return 'Unit)
-                :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn Number
+            Fn $ -> Unit
+            -> Unit
+            :features :js-ffi
         'restore-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn restore-storage! (raw)
             try
@@ -441,14 +398,12 @@
                 js/console.error "|Cannot restore stored rule; automatic writes paused:" message
                 , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String (-> Unit) (:features :js-ffi)
         'ssr? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def ssr?
             .some? $ respo.ffi.browser/query-selector |meta.respo-ssr
           :examples $ []
-          :schema $ :: 'Bool
+          :schema $ quote Bool
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
@@ -468,29 +423,35 @@
           :doc "|Shared Enum entry type for app operations, Reel controls and Alerts states; dispatch! decodes each before updating typed state."
           :code $ quote $ def DispatchOp (:: :unhandled)
           :examples $ []
-          :schema $ :: 'Enum
+          :schema $ quote Enum
         'FilterState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct FilterState
-            :filter-size $ :: 'Option 'Number
+            :filter-size $ quote $ Option Number
             :has-center? 'Bool
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :states (:: 'List 'Dynamic) 'Dynamic
+            :states
+              quote $ List Dynamic
+              , 'Dynamic
             :toggle 'Number
-            :set-data $ :: 'List 'Bool
-            :select (:: 'Option 'Number) 'Bool
-            :unselect (:: 'Option 'Number) 'Bool
+            :set-data $ quote $ List Bool
+            :select
+              quote $ Option Number
+              , 'Bool
+            :unselect
+              quote $ Option Number
+              , 'Bool
             :hydrate-storage 'Dynamic
           :examples $ []
-          :schema $ :: 'EnumDef
+          :schema $ quote EnumDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store
-            :states $ :: 'Map 'Dynamic 'Dynamic
-            :code-array $ :: 'List 'Bool
+            :states $ quote $ Map Dynamic Dynamic
+            :code-array $ quote $ List Bool
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'checked-codes $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn checked-codes (raw)
             let
@@ -501,9 +462,8 @@
                   integer? $ / (.len codes) 4
                 , codes $ raise "|Rule data must contain a nonempty multiple of four Boolean bits"
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic
-            :return $ :: 'List 'Bool
+          :schema $ quote $ Fn Dynamic
+            -> $ List Bool
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (op)
             match op
@@ -526,8 +486,7 @@
               (:hydrate-storage data) (Op :hydrate-storage data)
               _ $ raise $ str "|Unknown Life Patterns operation: " op
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Op)
-            :args $ [] 'Enum
+          :schema $ quote $ Fn Enum (-> app.schema/Op)
         'decode-store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-store (raw)
             let
@@ -544,8 +503,7 @@
                 , nil
               assoc store :code-array $ checked-codes $ :code-array store
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> app.schema/Store)
         'read-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-filter (raw)
             let
@@ -556,23 +514,21 @@
                   .unwrap-or (get raw :has-center?) true
                   , 'Bool
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/FilterState)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> app.schema/FilterState)
         'read-state-map $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-state-map (raw)
             if (nil? raw) ({})
               decode-map-as raw $ :: 'Map 'Tag 'Dynamic
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'Dynamic
-            :return $ :: 'Map 'Tag 'Dynamic
+          :schema $ quote $ Fn Dynamic
+            -> $ Map Tag Dynamic
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             Store :states
               {} $ :cursor $ []
               , :code-array $ repeat false $ pow 2 9
           :examples $ []
-          :schema $ :: 'app.schema/Store
+          :schema $ quote app.schema/Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
@@ -580,13 +536,10 @@
         'count-bits $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn count-bits (n)
             .foldl (range 9) 0 $ fn (total index)
-              hint-fn $ {}
-                :args $ [] 'Number 'Number
-                :return 'Number
+              hint-fn $ Fn Number Number $ -> Number
               + total $ bit-and 1 $ bit-shr n index
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Number)
-            :args $ [] 'Number
+          :schema $ quote $ Fn Number (-> Number)
           :tests $ [] $ %{} 'TestEntry (:name |nine-bit-populations)
             :code $ quote $ do
               assert= (count-bits 0) 0
@@ -609,9 +562,8 @@
                     = center? $ = 1 $ bit-and 1 (bit-shr index 4)
                   , selected? value
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] (:: 'List 'Bool) (:: 'Option 'Number) 'Bool 'Bool
-            :return $ :: 'List 'Bool
+          :schema $ quote $ Fn (List Bool) (Option Number) Bool Bool
+            -> $ List Bool
           :tests $ [] $ %{} 'TestEntry (:name |all-and-center-selection)
             :code $ quote $ let
                 codes $ repeat false 512
@@ -651,8 +603,7 @@
                 assoc store :code-array $ update-selection (:code-array store) size center? false
               (:hydrate-storage raw) (schema/decode-store raw)
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
-            :args $ [] 'app.schema/Store 'app.schema/Op 'String 'Number
+          :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
           :tests $ [] $ %{} 'TestEntry (:name |state-subtree-and-legacy-store)
             :code $ quote $ let
                 next $ updater schema/store
@@ -680,31 +631,23 @@
       :defs $ {}
         'RangeHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait RangeHost
-            .select-node! $ :: 'Fn $ {}
-              :args $ [] 'app.util/RangeHost 'js-ffi.browser/DomElementHost
-              :return 'Unit
+            .select-node! $ quote $ Fn app.util/RangeHost js-ffi.browser/DomElementHost (-> Unit)
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} $ :select-node! |selectNode
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'SelectionHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait SelectionHost
-            .remove-all-ranges! $ :: 'Fn $ {}
-              :args $ [] 'app.util/SelectionHost
-              :return 'Unit
-            .add-range! $ :: 'Fn $ {}
-              :args $ [] 'app.util/SelectionHost 'app.util/RangeHost
-              :return 'Unit
+            .remove-all-ranges! $ quote $ Fn app.util/SelectionHost (-> Unit)
+            .add-range! $ quote $ Fn app.util/SelectionHost app.util/RangeHost (-> Unit)
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} (:add-range! |addRange) (:remove-all-ranges! |removeAllRanges)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'copy! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn copy! (content) (browser/clipboard-write-text! content) &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'String
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn String (-> Unit) (:features :js-ffi)
         'highlight-node! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn highlight-node! (event)
             if-let
@@ -722,9 +665,7 @@
                 , &unit
               , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] $ :: 'Map 'Tag 'Dynamic
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> Unit) (:features :js-ffi)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.util
           :require $ js-ffi.browser :as browser
