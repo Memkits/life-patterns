@@ -8,7 +8,7 @@ Demo http://repo.memkits.org/life-patterns/
 
 ### Usages
 
-Use formal Calcit/procs **0.31.0**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
+Use formal Calcit/procs **0.32.1**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
 and `deps.cirru`. Run `caps --strict --ci`, `yarn install --immutable`, then `yarn dev`
 or `yarn build`. Development compiles once before starting Vite. Run
 `calcit calcit.cirru js -w` in another terminal for live Calcit edits; no process
@@ -20,7 +20,24 @@ independent upload checker or repeated migration diagnostic suite. Production
 assets use `https://cos-sh.tiye.me/Memkits/life-patterns/`; preview paths are
 isolated by PR, run and attempt. Original server sync paths remain unchanged.
 
-### 0.31.0 使用者影响
+### 0.32.1 使用者影响
+
+请同时升级 CLI/procs、重装完整依赖图并刷新页面。模块使用已发布的 Respo 0.17.1、UI 0.9.0、
+JS-FFI 0.2.9、Alerts 0.11.0-alpha.5 和 Reel 0.7.0-alpha.5；UI 还固定 Router 0.9.0-alpha.4。
+严格 Caps 安装六个真实模块，不使用本地候选；仍有 alpha 依赖，不宣称整张图均为稳定版。
+
+官方工具迁移旧类型标注。View binary 的 Alerts `.show` 调用按新合同显式传
+`Option :some rule-str`，不将可选内容伪装成原始 String；弹窗仍显示原二进制规则。
+其余业务算法、位序、短 hex、存档编码、HUD、原三项测试和类型门禁保持。
+npm 等待期从 0 收紧为维护者已授权的一小时，移除旧 procs 豁免和无用的 Git 全匹配许可。
+两个 Action 引用改为经核对对应原 commit 的精确正式 tag，按维护者选择接受 tag 可移动风险。
+COS 仍只用 Action 内置 verify，原生产路径和发布条件不变。
+
+274 个定义、42 个公开定义、完整 strict、原三项回归测试、不可变安装、工具链配对和构建通过。
+实际页面 Set 9、View binary 1001、关闭、刷新恢复、Select All 512 位和 Uncheck 全空通过，
+浏览器无警告或错误；未操作剪贴板、Open game 或坏存档。本轮不合并、生产部署或发版。
+
+### 0.31.0 使用者影响（历史）
 
 升级后重新安装完整依赖图并刷新页面。Calcit/procs 使用正式0.31.0，
 Respo0.17.0-alpha.4、Reel0.7.0-alpha.4、Alerts0.11.0-alpha.3、UI0.9.0-alpha.4
