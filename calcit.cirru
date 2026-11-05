@@ -36,7 +36,7 @@
                 states $ :states store
                 cursor $ decode-map-as
                   .unwrap-or (get states :cursor) ([])
-                  :: 'List 'Dynamic
+                  List respo.schema/CoordKey
                 state $ app.schema/read-state-map $ .unwrap-or (get states :data) nil
                 filter-size-raw $ app.schema/read-filter state
                 filter-size $ :filter-size filter-size-raw
@@ -54,7 +54,7 @@
                   {} $ :style $ .merge ui/row-middle
                     {} (:padding "|2px 8px") (:align-items :flex-start)
                   <> "|Life Patterns" $ {} $ :font-family ui/font-fancy
-                  =< 8 nil
+                  space-x 8
                   let
                       rule-str $ encode-rules code-array
                       rule-hex $ binary-to-hex-text rule-str
@@ -104,11 +104,11 @@
                         (:none) (assoc state :filter-size nil)
                     fn (v d!)
                       d! $ app.schema/Op :states cursor $ assoc state :has-center? v
-                  =< 32 nil
+                  space-x 32
                   button $ {} (:style ui/button) (:inner-text "|Select All")
                     :on-click $ fn (e d!)
                       d! $ app.schema/Op :select filter-size has-center?
-                  =< 16 nil
+                  space-x 16
                   button $ {} (:style ui/button) (:inner-text |Uncheck)
                     :on-click $ fn (e d!)
                       d! $ app.schema/Op :unselect filter-size has-center?
@@ -130,7 +130,7 @@
                         let
                             v $ .unwrap $ nth code-array idx
                           [] idx $ comp-rule-card idx v
-                  =< nil 16
+                  space-y 16
                   div ({}) (<> "|Empty on next step:" css/font-fancy)
                   list-> ({})
                     ->
@@ -148,8 +148,12 @@
                           [] idx $ comp-rule-card idx v
                 .render alert-plugin
                 .render prompt-plugin
-                when dev? $ comp-typed-reel (>> states :reel) reel $ {}
-                when dev? $ comp-inspect |Store store $ {} (:bottom 0)
+                if dev?
+                  Option :some $ comp-typed-reel (>> states :reel) reel $ {}
+                  Option :none
+                if dev?
+                  Option :some $ comp-inspect |Store store $ {} (:bottom 0)
+                  Option :none
           :examples $ []
           :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store) (-> respo.schema/Component)
         'comp-filter $ %{} 'CodeEntry (:doc |)
@@ -189,7 +193,7 @@
                           on-change (Option :some n) d!
                       <> $ str n
                 []
-                  [] :space $ =< 8 nil
+                  [] :space $ space-x 8
                   [] :center $ div
                     {}
                       :on-click $ fn (e d!)
@@ -264,7 +268,7 @@
             respo.util.format :refer $ hsl
             respo.css :refer $ defstyle
             respo.core :refer $ defcomp defeffect <> >> div button textarea span input a list->
-            respo.comp.space :refer $ =<
+            respo.comp.space :refer $ space-x space-y
             reel.comp.reel :refer $ comp-typed-reel
             app.config :refer $ dev?
             respo.comp.inspect :refer $ comp-inspect
@@ -423,39 +427,33 @@
           :doc "|Shared Enum entry type for app operations, Reel controls and Alerts states; dispatch! decodes each before updating typed state."
           :code $ quote $ def DispatchOp (:: :unhandled)
           :examples $ []
-          :schema $ quote Enum
+          :schema $ quote AnyEnum
         'FilterState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct FilterState
-            :filter-size $ quote $ Option Number
-            :has-center? 'Bool
+            :filter-size $ Option Number
+            :has-center? Bool
           :examples $ []
           :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :states
-              quote $ List Dynamic
-              , 'Dynamic
-            :toggle 'Number
-            :set-data $ quote $ List Bool
-            :select
-              quote $ Option Number
-              , 'Bool
-            :unselect
-              quote $ Option Number
-              , 'Bool
-            :hydrate-storage 'Dynamic
+            :states (List respo.schema/CoordKey) Dynamic
+            :toggle Number
+            :set-data $ List Bool
+            :select (Option Number) Bool
+            :unselect (Option Number) Bool
+            :hydrate-storage Dynamic
           :examples $ []
           :schema $ quote EnumDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store
-            :states $ quote $ Map Dynamic Dynamic
-            :code-array $ quote $ List Bool
+            :states $ Map Dynamic Dynamic
+            :code-array $ List Bool
           :examples $ []
           :schema $ quote StructDef
         'checked-codes $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn checked-codes (raw)
             let
-                codes $ decode-map-as raw $ :: 'List 'Bool
+                codes $ decode-map-as raw $ List Bool
               if
                 and
                   > (.len codes) 0
@@ -469,7 +467,7 @@
             match op
               (:states cursor data)
                 Op :states
-                  decode-map-as cursor $ :: 'List 'Dynamic
+                  decode-map-as cursor $ List respo.schema/CoordKey
                   , data
               (:toggle index)
                 Op :toggle $ decode-map-as index 'Number
@@ -477,16 +475,16 @@
                 Op :set-data $ checked-codes data
               (:select size center)
                 Op :select
-                  decode-map-as size $ :: 'Option 'Number
+                  decode-map-as size $ Option Number
                   decode-map-as center 'Bool
               (:unselect size center)
                 Op :unselect
-                  decode-map-as size $ :: 'Option 'Number
+                  decode-map-as size $ Option Number
                   decode-map-as center 'Bool
               (:hydrate-storage data) (Op :hydrate-storage data)
               _ $ raise $ str "|Unknown Life Patterns operation: " op
           :examples $ []
-          :schema $ quote $ Fn Enum (-> app.schema/Op)
+          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
         'decode-store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-store (raw)
             let
@@ -497,7 +495,7 @@
                 .unwrap-or
                   get (:states store) :cursor
                   []
-                :: 'List 'Dynamic
+                List Dynamic
               read-filter $ read-state-map $ .unwrap-or
                 get (:states store) :data
                 , nil
@@ -518,7 +516,7 @@
         'read-state-map $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-state-map (raw)
             if (nil? raw) ({})
-              decode-map-as raw $ :: 'Map 'Tag 'Dynamic
+              decode-map-as raw $ Map Tag Dynamic
           :examples $ []
           :schema $ quote $ Fn Dynamic
             -> $ Map Tag Dynamic
@@ -592,7 +590,7 @@
               (:states cursor data)
                 assoc store :states $ decode-map-as
                   respo.cursor/update-state-tree (:states store) cursor data
-                  :: 'Map 'Dynamic 'Dynamic
+                  Map Dynamic Dynamic
               (:toggle index)
                 assoc store :code-array $ assoc (:code-array store) index $ not
                   .unwrap $ get (:code-array store) index
@@ -631,15 +629,15 @@
       :defs $ {}
         'RangeHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait RangeHost
-            .select-node! $ quote $ Fn app.util/RangeHost js-ffi.browser/DomElementHost (-> Unit)
+            .select-node! $ Fn app.util/RangeHost js-ffi.browser/DomElementHost $ -> Unit
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} $ :select-node! |selectNode
           :schema $ quote Trait
         'SelectionHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait SelectionHost
-            .remove-all-ranges! $ quote $ Fn app.util/SelectionHost (-> Unit)
-            .add-range! $ quote $ Fn app.util/SelectionHost app.util/RangeHost (-> Unit)
+            .remove-all-ranges! $ Fn app.util/SelectionHost $ -> Unit
+            .add-range! $ Fn app.util/SelectionHost app.util/RangeHost $ -> Unit
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
             :names $ {} (:add-range! |addRange) (:remove-all-ranges! |removeAllRanges)

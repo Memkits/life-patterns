@@ -8,7 +8,7 @@ Demo http://repo.memkits.org/life-patterns/
 
 ### Usages
 
-Use formal Calcit/procs **0.32.1**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
+Use formal Calcit/procs **0.35.1**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
 and `deps.cirru`. Run `caps --strict --ci`, `yarn install --immutable`, then `yarn dev`
 or `yarn build`. Development compiles once before starting Vite. Run
 `calcit calcit.cirru js -w` in another terminal for live Calcit edits; no process
@@ -20,7 +20,13 @@ independent upload checker or repeated migration diagnostic suite. Production
 assets use `https://cos-sh.tiye.me/Memkits/life-patterns/`; preview paths are
 isolated by PR, run and attempt. Original server sync paths remain unchanged.
 
-### 0.32.1 使用者影响
+### 0.35.1 使用者影响
+
+重新安装依赖、构建并刷新。正式模块为 Respo 0.19.4、UI 0.15.1、Alerts 0.13.1、Reel 0.9.2、JS FFI 0.2.13 和 Router 0.12.1。
+状态路径使用 CoordKey union，开发工具的缺席子节点用 Option 表达，五个间距沿用原宽高。
+规则编辑、二进制提示、位序和存档格式沿用。原三项回归、282 个全定义、42 个公开定义、完整 strict 和构建通过。
+
+### 此前 0.32.1 迁移
 
 请同时升级 CLI/procs、重装完整依赖图并刷新页面。模块使用已发布的 Respo 0.17.1、UI 0.9.0、
 JS-FFI 0.2.9、Alerts 0.11.0-alpha.5 和 Reel 0.7.0-alpha.5；UI 还固定 Router 0.9.0-alpha.4。
