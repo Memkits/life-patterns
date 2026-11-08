@@ -8,7 +8,7 @@ Demo http://repo.memkits.org/life-patterns/
 
 ### Usages
 
-Use formal Calcit/procs **0.35.1**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
+Use formal Calcit/procs **0.38.0**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
 and `deps.cirru`. Run `caps --strict --ci`, `yarn install --immutable`, then `yarn dev`
 or `yarn build`. Development compiles once before starting Vite. Run
 `calcit calcit.cirru js -w` in another terminal for live Calcit edits; no process
@@ -19,6 +19,11 @@ Released COS action v1.2.0 internally checks HTML references and verifies the pu
 independent upload checker or repeated migration diagnostic suite. Production
 assets use `https://cos-sh.tiye.me/Memkits/life-patterns/`; preview paths are
 isolated by PR, run and attempt. Original server sync paths remain unchanged.
+
+### Calcit 0.38.0 使用者影响
+
+重新安装依赖并构建。筛选组件只派发应用 `Op`。存档先经过原校验再进入 typed Store 操作，
+继续读取原存档格式。Reel 与 Alerts 共享的外部事件入口继续按原协议解码。
 
 ### 0.35.1 使用者影响
 

@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |alerts.calcit/ |js-ffi/
-      :type-slots $ {} $ :dispatch-op |app.schema/DispatchOp
+      :type-slots $ {} $ :dispatch-op 'app.schema/DispatchOp
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -37,7 +37,7 @@
                 cursor $ decode-map-as
                   .unwrap-or (get states :cursor) ([])
                   List respo.schema/CoordKey
-                state $ app.schema/read-state-map $ .unwrap-or (get states :data) nil
+                state $ app.schema/read-state-map $ .unwrap-or (get states :data) ({})
                 filter-size-raw $ app.schema/read-filter state
                 filter-size $ :filter-size filter-size-raw
                 has-center? $ :has-center? filter-size-raw
@@ -166,8 +166,8 @@
                   {}
                     :style $ .merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
                     :on-click $ fn (e d!)
-                      hint-fn $ Fn (Map Tag Dynamic)
-                        Fn Dynamic $ -> Unit
+                      hint-fn $ Fn respo.schema/RespoEvent
+                        Fn app.schema/Op $ -> Unit
                         -> Unit
                       on-change (Option :none) d!
                   <> |All
@@ -187,8 +187,8 @@
                             {} $ :opacity 1
                             {}
                         :on-click $ fn (e d!)
-                          hint-fn $ Fn (Map Tag Dynamic)
-                            Fn Dynamic $ -> Unit
+                          hint-fn $ Fn respo.schema/RespoEvent
+                            Fn app.schema/Op $ -> Unit
                             -> Unit
                           on-change (Option :some n) d!
                       <> $ str n
@@ -197,8 +197,8 @@
                   [] :center $ div
                     {}
                       :on-click $ fn (e d!)
-                        hint-fn $ Fn (Map Tag Dynamic)
-                          Fn Dynamic $ -> Unit
+                        hint-fn $ Fn respo.schema/RespoEvent
+                          Fn app.schema/Op $ -> Unit
                           -> Unit
                         on-center (not has-center?) d!
                       :style $ {}
@@ -208,10 +208,10 @@
           :examples $ []
           :schema $ quote $ Fn (Option Number) Bool
             Fn (Option Number)
-              Fn Enum $ -> Unit
+              Fn app.schema/Op $ -> Unit
               -> Unit
             Fn Bool
-              Fn Enum $ -> Unit
+              Fn app.schema/Op $ -> Unit
               -> Unit
             -> respo.schema/Component
         'comp-rule-card $ %{} 'CodeEntry (:doc |)
@@ -319,7 +319,7 @@
                   typed/record-op updater @*reel (schema/decode-op op) op-id op-time
               , &unit
           :examples $ []
-          :schema $ quote $ Fn Enum (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn AnyEnum (-> Unit) (:features :js-ffi) (:open :decode)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -395,7 +395,7 @@
           :code $ quote $ defn restore-storage! (raw)
             try
               do
-                dispatch! $ schema/Op :hydrate-storage $ extract-cirru-edn (js/JSON.parse raw)
+                dispatch! $ :: :hydrate-storage $ extract-cirru-edn (js/JSON.parse raw)
                 reset! *storage-error? false
                 , &unit
               fn (message) (reset! *storage-error? true)
@@ -441,7 +441,7 @@
             :set-data $ List Bool
             :select (Option Number) Bool
             :unselect (Option Number) Bool
-            :hydrate-storage Dynamic
+            :hydrate-storage app.schema/Store
           :examples $ []
           :schema $ quote EnumDef
         'Store $ %{} 'CodeEntry (:doc |)
@@ -481,7 +481,8 @@
                 Op :unselect
                   decode-map-as size $ Option Number
                   decode-map-as center 'Bool
-              (:hydrate-storage data) (Op :hydrate-storage data)
+              (:hydrate-storage data)
+                Op :hydrate-storage $ decode-store data
               _ $ raise $ str "|Unknown Life Patterns operation: " op
           :examples $ []
           :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
@@ -498,19 +499,20 @@
                 List Dynamic
               read-filter $ read-state-map $ .unwrap-or
                 get (:states store) :data
-                , nil
+                {}
               assoc store :code-array $ checked-codes $ :code-array store
           :examples $ []
           :schema $ quote $ Fn Dynamic (-> app.schema/Store)
         'read-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-filter (raw)
-            let
-                size $ .unwrap-or (get raw :filter-size) nil
-              FilterState :filter-size
-                if (number? size) (Option :some size) (Option :none)
-                , :has-center? $ decode-map-as
-                  .unwrap-or (get raw :has-center?) true
-                  , 'Bool
+            FilterState :filter-size
+              match (get raw :filter-size)
+                (:some value)
+                  if (number? value) (Option :some value) (Option :none)
+                (:none) (Option :none)
+              , :has-center? $ decode-map-as
+                .unwrap-or (get raw :has-center?) true
+                , 'Bool
           :examples $ []
           :schema $ quote $ Fn (Map Tag Dynamic) (-> app.schema/FilterState)
         'read-state-map $ %{} 'CodeEntry (:doc |)
@@ -599,7 +601,7 @@
                 assoc store :code-array $ update-selection (:code-array store) size center? true
               (:unselect size center?)
                 assoc store :code-array $ update-selection (:code-array store) size center? false
-              (:hydrate-storage raw) (schema/decode-store raw)
+              (:hydrate-storage raw) raw
           :examples $ []
           :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
           :tests $ [] $ %{} 'TestEntry (:name |state-subtree-and-legacy-store)
