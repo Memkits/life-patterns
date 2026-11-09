@@ -30,7 +30,7 @@
           :examples $ []
           :schema $ quote $ Fn (List Number) (-> Number)
         'comp-container $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defcomp comp-container (reel)
+          :code $ quote $ defcomp comp-container (reel on-control)
             let
                 store $ :store reel
                 states $ :states store
@@ -149,13 +149,15 @@
                 .render alert-plugin
                 .render prompt-plugin
                 if dev?
-                  Option :some $ comp-typed-reel (>> states :reel) reel $ {}
+                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control
                   Option :none
                 if dev?
                   Option :some $ comp-inspect |Store store $ {} (:bottom 0)
                   Option :none
           :examples $ []
-          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store) (-> respo.schema/Component)
+          :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
+            Fn reel.typed/Control $ -> Unit
+            -> respo.schema/Component
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
             list->
@@ -310,16 +312,13 @@
           :schema $ quote $ Ref Bool
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
-            let
-                op-id $ generate-id!
-                op-time $ host/now-ms
-              reset! *reel $ match (typed/decode-control op)
-                (:some control) (typed/apply-control updater @*reel control)
-                (:none)
-                  typed/record-op updater @*reel (schema/decode-op op) op-id op-time
-              , &unit
+            reset! *reel $ match op
+              (reel.typed/Control control) (typed/apply-control updater @*reel control)
+              (app.schema/Op action)
+                typed/record-op updater @*reel action (generate-id!) (host/now-ms)
+            , &unit
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> Unit) (:features :js-ffi) (:open :decode)
+          :schema $ quote $ Fn app.schema/ResolvedOp (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -327,7 +326,7 @@
             if ssr? $ render-app! realize-ssr!
             render-app! render!
             add-watch! *reel :changes $ fn (_reel _previous) (render-app! render!) &unit
-            listen-devtools! |k dispatch!
+            listen-devtools! |k on-control!
             browser/add-event-listener! |beforeunload $ fn (event) (persist-storage!)
             repeat! 60 persist-storage!
             if (not config/skip-storage?)
@@ -336,10 +335,11 @@
                 when (.some? raw)
                   restore-storage! $ .unwrap raw
             when (.some? config/rule0)
-              dispatch! $ :: :set-data $ ->
-                app.comp.container/hex-to-binary-text $ .unwrap config/rule0
-                .split |
-                .map $ fn (x) (= x |1)
+              dispatch! $ schema/Op :set-data $ schema/checked-codes
+                ->
+                  app.comp.container/hex-to-binary-text $ .unwrap config/rule0
+                  .split |
+                  .map $ fn (x) (= x |1)
             println "|App started."
           :examples $ []
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
@@ -348,6 +348,10 @@
             .unwrap $ respo.ffi.browser/query-selector |.app
           :examples $ []
           :schema $ quote respo.dom/DomElement
+        'on-control! $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn on-control! (control) (dispatch! control)
+          :examples $ []
+          :schema $ quote $ Fn reel.typed/Control (-> Unit)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             when (not @*storage-error?)
@@ -367,15 +371,14 @@
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! (renderer)
-            renderer mount-target (comp-container @*reel)
+            with-memo-frame $ fn () $ renderer mount-target (comp-container @*reel on-control!)
               fn (raw-op)
-                hint-fn $ Fn Dynamic $ -> Unit
-                if (enum? raw-op) (dispatch! raw-op) (raise "|Expected an Enum operation")
-                , &unit
+                hint-fn $ Fn *dispatch-op $ -> Unit
+                dispatch! $ schema/decode-op raw-op
           :examples $ []
           :schema $ quote $ Fn
             Fn respo.dom/DomElement respo.schema/Component
-              Fn Dynamic $ -> Unit
+              Fn *dispatch-op $ -> Unit
               -> Unit
               :features :js-ffi
             -> Unit
@@ -395,7 +398,8 @@
           :code $ quote $ defn restore-storage! (raw)
             try
               do
-                dispatch! $ :: :hydrate-storage $ extract-cirru-edn (js/JSON.parse raw)
+                dispatch! $ schema/Op :hydrate-storage $ schema/decode-store
+                  extract-cirru-edn $ js/JSON.parse raw
                 reset! *storage-error? false
                 , &unit
               fn (message) (reset! *storage-error? true)
@@ -421,10 +425,11 @@
             js-ffi.browser :as browser
             js-ffi.shared :as host
             |@calcit/procs :refer $ to-cirru-edn extract-cirru-edn
+            respo.memo :refer $ with-memo-frame
     'app.schema $ %{} 'FileEntry
       :defs $ {}
         'DispatchOp $ %{} 'CodeEntry
-          :doc "|Shared Enum entry type for app operations, Reel controls and Alerts states; dispatch! decodes each before updating typed state."
+          :doc "|Respo event boundary for app operations and the anonymous states emitted by Alerts. Reel Control has its own callback."
           :code $ quote $ def DispatchOp (:: :unhandled)
           :examples $ []
           :schema $ quote AnyEnum
@@ -444,6 +449,10 @@
             :hydrate-storage app.schema/Store
           :examples $ []
           :schema $ quote EnumDef
+        'ResolvedOp $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ResolvedOp app.schema/Op reel.typed/Control
+          :examples $ []
+          :schema $ quote UnionDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store
             :states $ Map Dynamic Dynamic
