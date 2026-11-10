@@ -63,7 +63,7 @@
                         span $ {} (:inner-text rule-hex)
                           :on-click $ fn (e d!)
                             hint-fn $ Fn respo.schema/RespoEvent
-                              Fn AnyEnum $ -> Unit
+                              Fn app.schema/Op $ -> Unit
                               -> Unit
                             copy! rule-hex
                             highlight-node! e
@@ -76,8 +76,7 @@
                               -> Unit
                             .show prompt-plugin d! $ fn (text)
                               hint-fn $ Fn String $ -> Unit
-                              d! $ app.schema/Op :set-data $ -> text (hex-to-binary-text) (.split |)
-                                .map $ fn (x) (= x |1)
+                              d! $ app.schema/Op :set-data $ hex-to-rule-bits text
                               , &unit
                             , &unit
                         a $ {} (:inner-text "|View binary") (:class-name css/link)
@@ -243,11 +242,16 @@
               join-string |
           :examples $ []
           :schema $ quote $ Fn (List Bool) (-> String)
-        'hex-to-binary-text $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn hex-to-binary-text (text)
-            js-ffi.contract/expect-string |hex-to-binary-text $ hex-to-binary text
+        'hex-to-rule-bits $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn hex-to-rule-bits (text)
+            ->
+              js-ffi.contract/expect-string |hex-to-binary-text $ hex-to-binary text
+              .split |
+              .map $ fn (digit) (= digit |1)
           :examples $ []
-          :schema $ quote $ Fn String (-> String) (:features :js-ffi)
+          :schema $ quote $ Fn String
+            -> $ List Bool
+            :features :js-ffi
         'open-game! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn open-game! (rule-hex)
             js-ffi.browser/window-open $ str |https://webgpu.art/fungi?rule= rule-hex
@@ -331,10 +335,7 @@
                   restore-storage! $ .unwrap raw
             when (.some? config/rule0)
               dispatch! $ schema/Op :set-data $ schema/checked-codes
-                ->
-                  app.comp.container/hex-to-binary-text $ .unwrap config/rule0
-                  .split |
-                  .map $ fn (x) (= x |1)
+                app.comp.container/hex-to-rule-bits $ .unwrap config/rule0
             println "|App started."
           :examples $ []
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
@@ -461,16 +462,14 @@
           :examples $ []
           :schema $ quote StructDef
         'checked-codes $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn checked-codes (raw)
-            let
-                codes $ decode-map-as raw $ List Bool
-              if
-                and
-                  > (.len codes) 0
-                  integer? $ / (.len codes) 4
-                , codes $ raise "|Rule data must contain a nonempty multiple of four Boolean bits"
+          :code $ quote $ defn checked-codes (codes)
+            if
+              and
+                > (.len codes) 0
+                integer? $ / (.len codes) 4
+              , codes $ raise "|Rule data must contain a nonempty multiple of four Boolean bits"
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn (List Bool)
             -> $ List Bool
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (op)
@@ -484,7 +483,7 @@
               (:toggle index)
                 Op :toggle $ decode-map-as index 'Number
               (:set-data data)
-                Op :set-data $ checked-codes data
+                Op :set-data $ checked-codes $ decode-map-as data (List Bool)
               (:select size center)
                 Op :select
                   decode-map-as size $ Option Number
