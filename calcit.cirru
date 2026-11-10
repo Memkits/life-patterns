@@ -6,7 +6,7 @@
     {} (:description |) (:init-fn 'app.main/main!) (:mode :js) (:reload-fn 'app.main/reload!) (:target :browser)
       :feature-policy $ {}
       :modules $ [] |respo.calcit/ |respo-ui.calcit/ |reel.calcit/ |alerts.calcit/ |js-ffi/
-      :type-slots $ {} $ :dispatch-op 'app.schema/DispatchOp
+      :type-slots $ {} $ :dispatch-op 'app.schema/Op
   :files $ {}
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
@@ -72,7 +72,7 @@
                           :style $ {}
                           :on-click $ fn (e d!)
                             hint-fn $ Fn respo.schema/RespoEvent
-                              Fn AnyEnum $ -> Unit
+                              Fn app.schema/Op $ -> Unit
                               -> Unit
                             .show prompt-plugin d! $ fn (text)
                               hint-fn $ Fn String $ -> Unit
@@ -83,9 +83,9 @@
                           :style $ {}
                           :on-click $ fn (e d!)
                             hint-fn $ Fn respo.schema/RespoEvent
-                              Fn AnyEnum $ -> Unit
+                              Fn app.schema/Op $ -> Unit
                               -> Unit
-                            .show alert-plugin d! $ Option :some rule-str
+                            .show alert-plugin d! $ Some rule-str
                             , &unit
                         a $ {} (:inner-text "|Open game!") (:class-name css/link)
                           :style $ {}
@@ -143,11 +143,11 @@
                 .render alert-plugin
                 .render prompt-plugin
                 if dev?
-                  Option :some $ comp-typed-reel (>> states :reel) reel ({}) on-control
-                  Option :none
+                  Some $ comp-typed-reel (>> states :reel) reel ({}) on-control
+                  , None
                 if dev?
-                  Option :some $ comp-inspect |Store store $ {} (:bottom 0)
-                  Option :none
+                  Some $ comp-inspect |Store store $ {} (:bottom 0)
+                  , None
           :examples $ []
           :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
             Fn reel.typed/Control $ -> Unit
@@ -165,7 +165,7 @@
                       hint-fn $ Fn respo.schema/RespoEvent
                         Fn app.schema/Op $ -> Unit
                         -> Unit
-                      on-change (Option :none) d!
+                      on-change None d!
                   <> |All
                 -> (range 10)
                   map $ fn (n)
@@ -186,7 +186,7 @@
                           hint-fn $ Fn respo.schema/RespoEvent
                             Fn app.schema/Op $ -> Unit
                             -> Unit
-                          on-change (Option :some n) d!
+                          on-change (Some n) d!
                       <> $ str n
                 []
                   keyed-component :space $ space-x 8
@@ -304,7 +304,7 @@
         '*reel $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *reel (typed/new-reel schema/store)
           :examples $ []
-          :schema $ quote $ Ref (reel.typed/State app.schema/Op app.schema/Store)
+          :schema $ quote $ Ref (typed/State schema/Op schema/Store)
         '*storage-error? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *storage-error? false
           :examples $ []
@@ -317,7 +317,7 @@
                 typed/record-op updater @*reel action (generate-id!) (host/now-ms)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn app.schema/ResolvedOp (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn schema/ResolvedOp (-> Unit) (:features :js-ffi)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -334,8 +334,7 @@
                 when (.some? raw)
                   restore-storage! $ .unwrap raw
             when (.some? config/rule0)
-              dispatch! $ schema/Op :set-data $ schema/checked-codes
-                app.comp.container/hex-to-rule-bits $ .unwrap config/rule0
+              dispatch! $ schema/Op :set-data $ app.comp.container/hex-to-rule-bits (.unwrap config/rule0)
             println "|App started."
           :examples $ []
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
@@ -347,7 +346,7 @@
         'on-control! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-control! (control) (dispatch! control)
           :examples $ []
-          :schema $ quote $ Fn reel.typed/Control (-> Unit)
+          :schema $ quote $ Fn typed/Control (-> Unit)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             when (not @*storage-error?)
@@ -368,9 +367,9 @@
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! (renderer)
             with-memo-frame $ fn () $ renderer mount-target (comp-container @*reel on-control!)
-              fn (raw-op)
-                hint-fn $ Fn *dispatch-op $ -> Unit
-                dispatch! $ schema/decode-op raw-op
+              fn (op)
+                hint-fn $ Fn app.schema/Op $ -> Unit
+                dispatch! $ schema/decode-view-op op
           :examples $ []
           :schema $ quote $ Fn
             Fn respo.dom/DomElement respo.schema/Component
@@ -424,11 +423,6 @@
             respo.memo :refer $ with-memo-frame
     'app.schema $ %{} 'FileEntry
       :defs $ {}
-        'DispatchOp $ %{} 'CodeEntry
-          :doc "|Respo event boundary for app operations and the anonymous states emitted by Alerts. Reel Control has its own callback."
-          :code $ quote $ def DispatchOp (:: :unhandled)
-          :examples $ []
-          :schema $ quote AnyEnum
         'FilterEdit $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum FilterEdit
             :size $ Option Number
@@ -471,32 +465,6 @@
           :examples $ []
           :schema $ quote $ Fn (List Bool)
             -> $ List Bool
-        'decode-op $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn decode-op (op)
-            match op
-              (:states cursor data)
-                Op :states
-                  decode-map-as cursor $ List respo.schema/CoordKey
-                  , data
-              (:filter edit)
-                Op :filter $ decode-map-as edit FilterEdit
-              (:toggle index)
-                Op :toggle $ decode-map-as index 'Number
-              (:set-data data)
-                Op :set-data $ checked-codes $ decode-map-as data (List Bool)
-              (:select size center)
-                Op :select
-                  decode-map-as size $ Option Number
-                  decode-map-as center 'Bool
-              (:unselect size center)
-                Op :unselect
-                  decode-map-as size $ Option Number
-                  decode-map-as center 'Bool
-              (:hydrate-storage data)
-                Op :hydrate-storage $ decode-store data
-              _ $ raise $ str "|Unknown Life Patterns operation: " op
-          :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/Op) (:open :decode)
         'decode-store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-store (raw)
             let
@@ -513,19 +481,33 @@
                 {}
               assoc store :code-array $ checked-codes $ :code-array store
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.schema/Store)
+          :schema $ quote $ Fn Dynamic (-> Store)
+        'decode-view-op $ %{} 'CodeEntry
+          :doc "|Alerts 0.14.3 can still emit anonymous :states from close callbacks."
+          :code $ quote $ defn decode-view-op (raw)
+            if
+              = (enum-definition raw) (Some Op)
+              decode-map-as raw 'Op
+              match raw
+                (:states cursor state)
+                  Op :states
+                    decode-map-as cursor $ List respo.schema/CoordKey
+                    , state
+                _ $ raise $ str "|Unknown Life Patterns operation: " raw
+          :examples $ []
+          :schema $ quote $ Fn AnyEnum (-> Op) (:open :decode)
         'read-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-filter (raw)
             FilterState :filter-size
               match (get raw :filter-size)
                 (:some value)
-                  if (number? value) (Option :some value) (Option :none)
-                (:none) (Option :none)
+                  if (number? value) (Some value) None
+                (:none) None
               , :has-center? $ decode-map-as
                 .unwrap-or (get raw :has-center?) true
                 , 'Bool
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> app.schema/FilterState)
+          :schema $ quote $ Fn (Map Tag Dynamic) (-> FilterState)
         'read-state-map $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-state-map (raw)
             if (nil? raw) ({})
@@ -539,7 +521,7 @@
               {} $ :cursor $ []
               , :code-array $ repeat false $ pow 2 9
           :examples $ []
-          :schema $ quote app.schema/Store
+          :schema $ quote Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
@@ -579,21 +561,21 @@
             :code $ quote $ let
                 codes $ repeat false 512
               assert=
-                update-selection ([] false false false false) (Option :none) false true
+                update-selection ([] false false false false) None false true
                 repeat true 512
               assert=
                 .len $ filter
-                  update-selection codes (Option :some 4) true true
+                  update-selection codes (Some 4) true true
                   fn (bit) bit
                 , 56
               assert=
                 .len $ filter
-                  update-selection codes (Option :some 4) false true
+                  update-selection codes (Some 4) false true
                   fn (bit) bit
                 , 70
               assert=
                 .len $ filter
-                  update-selection (repeat true 512) (Option :some 4) true false
+                  update-selection (repeat true 512) (Some 4) true false
                   fn (bit) bit
                 , 456
             :tags $ #{} :regression
@@ -621,14 +603,15 @@
               (:toggle index)
                 assoc store :code-array $ assoc (:code-array store) index $ not
                   .unwrap $ get (:code-array store) index
-              (:set-data codes) (assoc store :code-array codes)
+              (:set-data codes)
+                assoc store :code-array $ schema/checked-codes codes
               (:select size center?)
                 assoc store :code-array $ update-selection (:code-array store) size center? true
               (:unselect size center?)
                 assoc store :code-array $ update-selection (:code-array store) size center? false
               (:hydrate-storage raw) raw
           :examples $ []
-          :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
+          :schema $ quote $ Fn schema/Store schema/Op String Number (-> schema/Store)
           :tests $ []
             %{} 'TestEntry (:name |typed-filter-edits-preserve-legacy-fields)
               :code $ quote $ let
@@ -637,14 +620,13 @@
                       :cursor $ []
                       :data $ {} (:filter-size 2) (:has-center? true) (:legacy |keep)
                     :code-array $ [] true false false true
-                  size-op $ schema/decode-op $ :: :filter
-                    schema/FilterEdit :size $ Option :some 4
+                  size-op $ schema/Op :filter $ schema/FilterEdit :size (Some 4)
                   sized $ updater start size-op |regression 0
                   centered $ updater sized
                     schema/Op :filter $ schema/FilterEdit :center false
                     , |regression 0
                   cleared $ updater centered
-                    schema/Op :filter $ schema/FilterEdit :size $ Option :none
+                    schema/Op :filter $ schema/FilterEdit :size None
                     , |regression 0
                 assert= (Result :ok 4)
                   get-in (:states sized) ([] :data :filter-size)
