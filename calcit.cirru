@@ -65,8 +65,8 @@
                         {} $ :class-name css/row-middle
                         span $ {} (:inner-text rule-hex)
                           :on-click $ fn (e d!)
-                            hint-fn $ Fn (Map Tag Dynamic)
-                              Fn Dynamic $ -> Unit
+                            hint-fn $ Fn respo.schema/RespoEvent
+                              Fn AnyEnum $ -> Unit
                               -> Unit
                             copy! rule-hex
                             highlight-node! e
@@ -74,8 +74,8 @@
                         a $ {} (:inner-text |Set) (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
-                            hint-fn $ Fn (Map Tag Dynamic)
-                              Fn Dynamic $ -> Unit
+                            hint-fn $ Fn respo.schema/RespoEvent
+                              Fn AnyEnum $ -> Unit
                               -> Unit
                             .show prompt-plugin d! $ fn (text)
                               hint-fn $ Fn String $ -> Unit
@@ -86,8 +86,8 @@
                         a $ {} (:inner-text "|View binary") (:class-name css/link)
                           :style $ {}
                           :on-click $ fn (e d!)
-                            hint-fn $ Fn (Map Tag Dynamic)
-                              Fn Dynamic $ -> Unit
+                            hint-fn $ Fn respo.schema/RespoEvent
+                              Fn AnyEnum $ -> Unit
                               -> Unit
                             .show alert-plugin d! $ Option :some rule-str
                             , &unit
@@ -494,7 +494,7 @@
                 Op :hydrate-storage $ decode-store data
               _ $ raise $ str "|Unknown Life Patterns operation: " op
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
+          :schema $ quote $ Fn AnyEnum (-> app.schema/Op) (:open :decode)
         'decode-store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-store (raw)
             let
@@ -660,8 +660,7 @@
         'highlight-node! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn highlight-node! (event)
             if-let
-              target $ browser/event-target-element $ browser/event-host
-                .unwrap $ get event :event
+              target $ browser/event-target-element $ browser/event-host (:event event)
               let
                   selection $ js/getSelection
                 when (js-present? selection)
@@ -674,7 +673,7 @@
                 , &unit
               , &unit
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn respo.schema/RespoEvent (-> Unit) (:features :js-ffi)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.util
           :require $ js-ffi.browser :as browser
