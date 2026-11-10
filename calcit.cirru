@@ -34,9 +34,6 @@
             let
                 store $ :store reel
                 states $ :states store
-                cursor $ decode-map-as
-                  .unwrap-or (get states :cursor) ([])
-                  List respo.schema/CoordKey
                 state $ app.schema/read-state-map $ .unwrap-or (get states :data) ({})
                 filter-size-raw $ app.schema/read-filter state
                 filter-size $ :filter-size filter-size-raw
@@ -99,11 +96,9 @@
                     {} $ :padding "|4 8px"
                   comp-filter filter-size has-center?
                     fn (n d!)
-                      d! $ app.schema/Op :states cursor $ match n
-                        (:some size) (assoc state :filter-size size)
-                        (:none) (assoc state :filter-size nil)
+                      d! $ app.schema/Op :filter $ app.schema/FilterEdit :size n
                     fn (v d!)
-                      d! $ app.schema/Op :states cursor $ assoc state :has-center? v
+                      d! $ app.schema/Op :filter $ app.schema/FilterEdit :center v
                   space-x 32
                   button $ {} (:style ui/button) (:inner-text "|Select All")
                     :on-click $ fn (e d!)
@@ -117,7 +112,7 @@
                     {} (:padding "|0 6px") (:padding-bottom 120) (:padding-top 20)
                       :border-top $ str "|1px solid " $ hsl 0 0 90
                   div ({}) (<> "|Filled on next step:" css/font-fancy)
-                  list-> ({})
+                  keyed-> ({})
                     ->
                       range $ .len code-array
                       filter $ fn (idx)
@@ -129,10 +124,10 @@
                       map $ fn (idx)
                         let
                             v $ .unwrap $ nth code-array idx
-                          [] idx $ comp-rule-card idx v
+                          keyed-element idx $ comp-rule-card idx v
                   space-y 16
                   div ({}) (<> "|Empty on next step:" css/font-fancy)
-                  list-> ({})
+                  keyed-> ({})
                     ->
                       range $ .len code-array
                       filter $ fn (idx)
@@ -145,7 +140,7 @@
                       map $ fn (idx)
                         let
                             v $ .unwrap $ nth code-array idx
-                          [] idx $ comp-rule-card idx v
+                          keyed-element idx $ comp-rule-card idx v
                 .render alert-plugin
                 .render prompt-plugin
                 if dev?
@@ -160,11 +155,11 @@
             -> respo.schema/Component
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
-            list->
+            keyed->
               {} $ :style $ .merge ui/row-middle
                 {} (:font-family ui/font-fancy) (:user-select :none)
               concat
-                [] $ [] :all $ div
+                [] $ keyed-element :all $ div
                   {}
                     :style $ .merge ui/center $ {} (:width 16) (:margin "|2px 4px") (:cursor :pointer)
                     :on-click $ fn (e d!)
@@ -175,7 +170,7 @@
                   <> |All
                 -> (range 10)
                   map $ fn (n)
-                    [] n $ div
+                    keyed-element n $ div
                       {}
                         :style $ .merge ui/center
                           {} (:width 16) (:height 20) (:margin "|2px 4px")
@@ -195,8 +190,8 @@
                           on-change (Option :some n) d!
                       <> $ str n
                 []
-                  [] :space $ space-x 8
-                  [] :center $ div
+                  keyed-component :space $ space-x 8
+                  keyed-element :center $ div
                     {}
                       :on-click $ fn (e d!)
                         hint-fn $ Fn respo.schema/RespoEvent
@@ -269,7 +264,7 @@
           :require (respo-ui.core :as ui) (respo-ui.css :as css)
             respo.util.format :refer $ hsl
             respo.css :refer $ defstyle
-            respo.core :refer $ defcomp defeffect <> >> div button textarea span input a list->
+            respo.core :refer $ defcomp defeffect <> >> div button textarea span input a keyed-> keyed-element keyed-component
             respo.comp.space :refer $ space-x space-y
             reel.comp.reel :refer $ comp-typed-reel
             app.config :refer $ dev?
@@ -433,6 +428,12 @@
           :code $ quote $ def DispatchOp (:: :unhandled)
           :examples $ []
           :schema $ quote AnyEnum
+        'FilterEdit $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defenum FilterEdit
+            :size $ Option Number
+            :center Bool
+          :examples $ []
+          :schema $ quote EnumDef
         'FilterState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct FilterState
             :filter-size $ Option Number
@@ -440,7 +441,7 @@
           :examples $ []
           :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defenum Op
+          :code $ quote $ defenum Op (:filter app.schema/FilterEdit)
             :states (List respo.schema/CoordKey) Dynamic
             :toggle Number
             :set-data $ List Bool
@@ -478,6 +479,8 @@
                 Op :states
                   decode-map-as cursor $ List respo.schema/CoordKey
                   , data
+              (:filter edit)
+                Op :filter $ decode-map-as edit FilterEdit
               (:toggle index)
                 Op :toggle $ decode-map-as index 'Number
               (:set-data data)
@@ -505,7 +508,7 @@
                 .unwrap-or
                   get (:states store) :cursor
                   []
-                List Dynamic
+                List respo.schema/CoordKey
               read-filter $ read-state-map $ .unwrap-or
                 get (:states store) :data
                 {}
@@ -602,6 +605,20 @@
                 assoc store :states $ decode-map-as
                   respo.cursor/update-state-tree (:states store) cursor data
                   Map Dynamic Dynamic
+              (:filter edit)
+                let
+                    states $ :states store
+                    cursor $ decode-map-as
+                      .unwrap-or (get states :cursor) ([])
+                      List respo.schema/CoordKey
+                    data $ schema/read-state-map $ .unwrap-or (get states :data) ({})
+                    next $ match edit
+                      (:size size)
+                        match size
+                          (:some n) (assoc data :filter-size n)
+                          (:none) (assoc data :filter-size nil)
+                      (:center center?) (assoc data :has-center? center?)
+                  assoc store :states $ decode-map-as (respo.cursor/update-state-tree states cursor next) (Map Dynamic Dynamic)
               (:toggle index)
                 assoc store :code-array $ assoc (:code-array store) index $ not
                   .unwrap $ get (:code-array store) index
@@ -613,26 +630,51 @@
               (:hydrate-storage raw) raw
           :examples $ []
           :schema $ quote $ Fn app.schema/Store app.schema/Op String Number (-> app.schema/Store)
-          :tests $ [] $ %{} 'TestEntry (:name |state-subtree-and-legacy-store)
-            :code $ quote $ let
-                next $ updater schema/store
-                  schema/Op :states ([] :panel)
-                    {} $ :open? true
-                  , |regression 0
-                short $ schema/decode-store $ {}
-                  :states $ {} $ :cursor ([])
-                  :code-array $ [] true false false true
-              assert=
-                get-in (:states next) ([] :panel :data :open?)
-                Result :ok true
-              assert=
-                .none? $ get (:states next) :states
-                , true
-              assert= (:code-array next) (:code-array schema/store)
-              assert=
-                .len $ :code-array short
-                , 4
-            :tags $ #{} :regression
+          :tests $ []
+            %{} 'TestEntry (:name |typed-filter-edits-preserve-legacy-fields)
+              :code $ quote $ let
+                  start $ schema/decode-store $ {}
+                    :states $ {}
+                      :cursor $ []
+                      :data $ {} (:filter-size 2) (:has-center? true) (:legacy |keep)
+                    :code-array $ [] true false false true
+                  size-op $ schema/decode-op $ :: :filter
+                    schema/FilterEdit :size $ Option :some 4
+                  sized $ updater start size-op |regression 0
+                  centered $ updater sized
+                    schema/Op :filter $ schema/FilterEdit :center false
+                    , |regression 0
+                  cleared $ updater centered
+                    schema/Op :filter $ schema/FilterEdit :size $ Option :none
+                    , |regression 0
+                assert= (Result :ok 4)
+                  get-in (:states sized) ([] :data :filter-size)
+                assert= (Result :ok true)
+                  get-in (:states sized) ([] :data :has-center?)
+                assert=
+                  Result :ok $ {} (:filter-size nil) (:has-center? false) (:legacy |keep)
+                  get-in (:states cleared) ([] :data)
+              :tags $ #{} :regression
+            %{} 'TestEntry (:name |state-subtree-and-legacy-store)
+              :code $ quote $ let
+                  next $ updater schema/store
+                    schema/Op :states ([] :panel)
+                      {} $ :open? true
+                    , |regression 0
+                  short $ schema/decode-store $ {}
+                    :states $ {} $ :cursor ([])
+                    :code-array $ [] true false false true
+                assert=
+                  get-in (:states next) ([] :panel :data :open?)
+                  Result :ok true
+                assert=
+                  .none? $ get (:states next) :states
+                  , true
+                assert= (:code-array next) (:code-array schema/store)
+                assert=
+                  .len $ :code-array short
+                  , 4
+              :tags $ #{} :regression
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require $ app.schema :as schema
