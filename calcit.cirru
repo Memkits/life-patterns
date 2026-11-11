@@ -450,8 +450,7 @@
           :examples $ []
           :schema $ quote UnionDef
         'Store $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct Store
-            :states $ Map Dynamic Dynamic
+          :code $ quote $ defstruct Store (:states respo.schema/States)
             :code-array $ List Bool
           :examples $ []
           :schema $ quote StructDef
@@ -481,7 +480,7 @@
                 {}
               assoc store :code-array $ checked-codes $ :code-array store
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Store)
+          :schema $ quote $ Fn Input (-> Store) (:generics Input)
         'decode-view-op $ %{} 'CodeEntry
           :doc "|Alerts 0.14.3 can still emit anonymous :states from close callbacks."
           :code $ quote $ defn decode-view-op (raw)
@@ -503,18 +502,19 @@
                 (:some value)
                   if (number? value) (Some value) None
                 (:none) None
-              , :has-center? $ decode-map-as
-                .unwrap-or (get raw :has-center?) true
-                , 'Bool
+              , :has-center? $ match (get raw :has-center?)
+                (:some value) (decode-map-as value 'Bool)
+                (:none) true
           :examples $ []
-          :schema $ quote $ Fn (Map Tag Dynamic) (-> FilterState)
+          :schema $ quote $ Fn (Map Tag V) (-> FilterState) (:generics V)
         'read-state-map $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-state-map (raw)
             if (nil? raw) ({})
               decode-map-as raw $ Map Tag Dynamic
           :examples $ []
-          :schema $ quote $ Fn Dynamic
+          :schema $ quote $ Fn Input
             -> $ Map Tag Dynamic
+            :generics Input
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             Store :states
