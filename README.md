@@ -8,7 +8,7 @@ Demo http://repo.memkits.org/life-patterns/
 
 ### Usages
 
-Use formal Calcit/procs **0.41.0**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
+Use formal Calcit/procs **0.41.1**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
 and `deps.cirru`. Run `caps --strict --ci`, `yarn install --immutable`, then `yarn dev`
 or `yarn build`. Development compiles once before starting Vite. Run
 `calcit calcit.cirru js -w` in another terminal for live Calcit edits; no process

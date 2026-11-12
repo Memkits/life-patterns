@@ -34,7 +34,7 @@
             let
                 store $ :store reel
                 states $ :states store
-                state $ app.schema/read-state-map $ .unwrap-or (get states :data) ({})
+                state $ app.schema/read-state-map $ .unwrap-or (&map:get states :data) ({})
                 filter-size-raw $ app.schema/read-filter state
                 filter-size $ :filter-size filter-size-raw
                 has-center? $ :has-center? filter-size-raw
@@ -368,7 +368,7 @@
           :code $ quote $ defn render-app! (renderer)
             with-memo-frame $ fn () $ renderer mount-target (comp-container @*reel on-control!)
               fn (op)
-                hint-fn $ Fn app.schema/Op $ -> Unit
+                hint-fn $ Fn schema/Op $ -> Unit
                 dispatch! $ schema/decode-view-op op
           :examples $ []
           :schema $ quote $ Fn
@@ -472,11 +472,11 @@
                   , 'app.schema/Store
               decode-map-as
                 .unwrap-or
-                  get (:states store) :cursor
+                  &map:get (:states store) :cursor
                   []
                 List respo.schema/CoordKey
               read-filter $ read-state-map $ .unwrap-or
-                get (:states store) :data
+                &map:get (:states store) :data
                 {}
               assoc store :code-array $ checked-codes $ :code-array store
           :examples $ []
@@ -590,9 +590,9 @@
                 let
                     states $ :states store
                     cursor $ decode-map-as
-                      .unwrap-or (get states :cursor) ([])
+                      .unwrap-or (&map:get states :cursor) ([])
                       List respo.schema/CoordKey
-                    data $ schema/read-state-map $ .unwrap-or (get states :data) ({})
+                    data $ schema/read-state-map $ .unwrap-or (&map:get states :data) ({})
                     next $ match edit
                       (:size size)
                         match size
@@ -629,12 +629,18 @@
                     schema/Op :filter $ schema/FilterEdit :size None
                     , |regression 0
                 assert= (Result :ok 4)
-                  get-in (:states sized) ([] :data :filter-size)
+                  get-in
+                    decode-map-as (:states sized) (Map Dynamic Dynamic)
+                    [] :data :filter-size
                 assert= (Result :ok true)
-                  get-in (:states sized) ([] :data :has-center?)
+                  get-in
+                    decode-map-as (:states sized) (Map Dynamic Dynamic)
+                    [] :data :has-center?
                 assert=
                   Result :ok $ {} (:filter-size nil) (:has-center? false) (:legacy |keep)
-                  get-in (:states cleared) ([] :data)
+                  get-in
+                    decode-map-as (:states cleared) (Map Dynamic Dynamic)
+                    [] :data
               :tags $ #{} :regression
             %{} 'TestEntry (:name |state-subtree-and-legacy-store)
               :code $ quote $ let
@@ -646,10 +652,12 @@
                     :states $ {} $ :cursor ([])
                     :code-array $ [] true false false true
                 assert=
-                  get-in (:states next) ([] :panel :data :open?)
+                  get-in
+                    decode-map-as (:states next) (Map Dynamic Dynamic)
+                    [] :panel :data :open?
                   Result :ok true
                 assert=
-                  .none? $ get (:states next) :states
+                  .none? $ &map:get (:states next) :states
                   , true
                 assert= (:code-array next) (:code-array schema/store)
                 assert=
