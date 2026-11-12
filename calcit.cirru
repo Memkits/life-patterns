@@ -317,7 +317,7 @@
                 typed/record-op updater @*reel action (generate-id!) (host/now-ms)
             , &unit
           :examples $ []
-          :schema $ quote $ Fn schema/ResolvedOp (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn schema/ResolvedOp (-> Unit) (:features :js-ffi :state)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             println "|Running mode:" $ if config/dev? |dev |release
@@ -337,7 +337,7 @@
               dispatch! $ schema/Op :set-data $ app.comp.container/hex-to-rule-bits (.unwrap config/rule0)
             println "|App started."
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'mount-target $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def mount-target
             .unwrap $ respo.ffi.browser/query-selector |.app
@@ -346,7 +346,7 @@
         'on-control! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn on-control! (control) (dispatch! control)
           :examples $ []
-          :schema $ quote $ Fn typed/Control (-> Unit)
+          :schema $ quote $ Fn typed/Control (-> Unit) (:features :state)
         'persist-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn persist-storage! ()
             when (not @*storage-error?)
@@ -356,14 +356,14 @@
                   &struct:to-map $ :store @*reel
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (remove-watch! *reel :changes) (clear-cache!)
             add-watch! *reel :changes $ fn (_reel _previous) (render-app! render!) &unit
             reset! *reel $ typed/refresh updater @*reel schema/store
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi :state)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! (renderer)
             with-memo-frame $ fn () $ renderer mount-target (comp-container @*reel on-control!)
@@ -377,7 +377,7 @@
               -> Unit
               :features :js-ffi
             -> Unit
-            :features :js-ffi
+            :features :js-ffi :state
         'repeat! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn repeat! (duration cb)
             browser/set-timeout!
@@ -401,7 +401,7 @@
                 js/console.error "|Cannot restore stored rule; automatic writes paused:" message
                 , &unit
           :examples $ []
-          :schema $ quote $ Fn String (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn String (-> Unit) (:features :js-ffi :state)
         'ssr? $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def ssr?
             .some? $ respo.ffi.browser/query-selector |meta.respo-ssr
@@ -437,7 +437,7 @@
           :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op (:filter app.schema/FilterEdit)
-            :states (List respo.schema/CoordKey) Dynamic
+            :states (List respo.schema/CoordKey) (Map Dynamic Dynamic)
             :toggle Number
             :set-data $ List Bool
             :select (Option Number) Bool
@@ -491,7 +491,7 @@
                 (:states cursor state)
                   Op :states
                     decode-map-as cursor $ List respo.schema/CoordKey
-                    , state
+                    decode-map-as state $ Map Dynamic Dynamic
                 _ $ raise $ str "|Unknown Life Patterns operation: " raw
           :examples $ []
           :schema $ quote $ Fn AnyEnum (-> Op) (:open :decode)
