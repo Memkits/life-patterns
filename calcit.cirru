@@ -484,17 +484,19 @@
         'decode-view-op $ %{} 'CodeEntry
           :doc "|Alerts 0.14.3 can still emit anonymous :states from close callbacks."
           :code $ quote $ defn decode-view-op (raw)
-            if
-              = (enum-definition raw) (Some Op)
-              decode-map-as raw 'Op
-              match raw
-                (:states cursor state)
-                  Op :states
-                    decode-map-as cursor $ List respo.schema/CoordKey
-                    decode-map-as state $ Map Dynamic Dynamic
-                _ $ raise $ str "|Unknown Life Patterns operation: " raw
+            if (enum? raw)
+              if
+                = (enum-definition raw) (Some Op)
+                decode-map-as raw 'Op
+                match raw
+                  (:states cursor state)
+                    Op :states
+                      decode-map-as cursor $ List respo.schema/CoordKey
+                      decode-map-as state $ Map Dynamic Dynamic
+                  _ $ raise $ str "|Unknown Life Patterns operation: " raw
+              raise $ str "|Unknown Life Patterns operation: " raw
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> Op) (:open :decode)
+          :schema $ quote $ Fn Input (-> Op) (:generics Input)
         'read-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn read-filter (raw)
             FilterState :filter-size
