@@ -450,7 +450,8 @@
           :examples $ []
           :schema $ quote UnionDef
         'Store $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct Store (:states respo.schema/States)
+          :code $ quote $ defstruct Store
+            :states $ Map respo.schema/CoordKey Dynamic
             :code-array $ List Bool
           :examples $ []
           :schema $ quote StructDef
@@ -587,7 +588,7 @@
               (:states cursor data)
                 assoc store :states $ decode-map-as
                   respo.cursor/update-state-tree (:states store) cursor data
-                  Map Dynamic Dynamic
+                  Map respo.schema/CoordKey Dynamic
               (:filter edit)
                 let
                     states $ :states store
@@ -601,7 +602,7 @@
                           (:some n) (assoc data :filter-size n)
                           (:none) (assoc data :filter-size nil)
                       (:center center?) (assoc data :has-center? center?)
-                  assoc store :states $ decode-map-as (respo.cursor/update-state-tree states cursor next) (Map Dynamic Dynamic)
+                  assoc store :states $ decode-map-as (respo.cursor/update-state-tree states cursor next) (Map respo.schema/CoordKey Dynamic)
               (:toggle index)
                 assoc store :code-array $ assoc (:code-array store) index $ not
                   .unwrap $ get (:code-array store) index
