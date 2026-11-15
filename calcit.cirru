@@ -438,7 +438,7 @@
           :schema $ quote StructDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op (:filter app.schema/FilterEdit)
-            :states (List respo.schema/CoordKey) (Map Dynamic Dynamic)
+            :states (List respo.schema/CoordKey) (Map respo.schema/CoordKey Dynamic)
             :toggle Number
             :set-data $ List Bool
             :select (Option Number) Bool
@@ -494,7 +494,7 @@
                   (:states cursor state)
                     Op :states
                       decode-map-as cursor $ List respo.schema/CoordKey
-                      decode-map-as state $ Map Dynamic Dynamic
+                      decode-map-as state $ Map respo.schema/CoordKey Dynamic
                   _ $ raise $ str "|Unknown Life Patterns operation: " raw
               raise $ str "|Unknown Life Patterns operation: " raw
           :examples $ []
