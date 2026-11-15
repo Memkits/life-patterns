@@ -152,6 +152,7 @@
           :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
             Fn reel.typed/Control $ -> Unit
             -> respo.schema/Component
+            :features :state
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
             keyed->
@@ -363,7 +364,7 @@
             reset! *reel $ typed/refresh updater @*reel schema/store
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi :state)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! (renderer)
             with-memo-frame $ fn () $ renderer mount-target (comp-container @*reel on-control!)
