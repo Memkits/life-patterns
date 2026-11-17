@@ -150,9 +150,9 @@
                   , None
           :examples $ []
           :schema $ quote $ Fn (reel.typed/State app.schema/Op app.schema/Store)
-            Fn reel.typed/Control $ -> Unit
+            Fn reel.typed/Control (-> Unit) (:features :state)
             -> respo.schema/Component
-            :features :state
+            :features :io :js-ffi :state
         'comp-filter $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-filter (filter-size has-center? on-change on-center)
             keyed->
@@ -324,8 +324,10 @@
             println "|Running mode:" $ if config/dev? |dev |release
             if config/dev? $ load-console-formatter!
             if ssr? $ render-app! realize-ssr!
-            render-app! render!
-            add-watch! *reel :changes $ fn (_reel _previous) (render-app! render!) &unit
+            render-app! $ fn (t c d) (render! t c d)
+            add-watch! *reel :changes $ fn (_reel _previous)
+              render-app! $ fn (t c d) (render! t c d)
+              , &unit
             listen-devtools! |k on-control!
             browser/add-event-listener! |beforeunload $ fn (event) (persist-storage!)
             repeat! 60 persist-storage!
@@ -360,7 +362,9 @@
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! () (remove-watch! *reel :changes) (clear-cache!)
-            add-watch! *reel :changes $ fn (_reel _previous) (render-app! render!) &unit
+            add-watch! *reel :changes $ fn (_reel _previous)
+              render-app! $ fn (t c d) (render! t c d)
+              , &unit
             reset! *reel $ typed/refresh updater @*reel schema/store
             , &unit
           :examples $ []
@@ -374,11 +378,11 @@
           :examples $ []
           :schema $ quote $ Fn
             Fn respo.dom/DomElement respo.schema/Component
-              Fn *dispatch-op $ -> Unit
+              Fn *dispatch-op (-> Unit) (:features :io :state)
               -> Unit
-              :features :js-ffi
+              :features :io :js-ffi :state
             -> Unit
-            :features :js-ffi :state
+            :features :io :js-ffi :state
         'repeat! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn repeat! (duration cb)
             browser/set-timeout!
@@ -387,9 +391,9 @@
             , &unit
           :examples $ []
           :schema $ quote $ Fn Number
-            Fn $ -> Unit
+            Fn (-> Unit) (:features :state)
             -> Unit
-            :features :js-ffi
+            :features :js-ffi :state
         'restore-storage! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn restore-storage! (raw)
             try
