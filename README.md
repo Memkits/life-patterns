@@ -9,7 +9,7 @@ Demo http://repo.memkits.org/life-patterns/
 ### Usages
 
 Use formal Calcit/procs **0.44.0**, Node.js 24 and Yarn 4.18.0 with `calcit.cirru`
-and `deps.cirru`. Run `caps --strict --ci`, `yarn install --immutable`, then `yarn dev`
+and `deps.cirru`. Formal dependencies are Respo 0.19.13, Reel 0.11.5, Alerts 0.14.8, UI 0.15.7, JS-FFI 0.2.19, and transitive Router 0.12.11. Run `caps --strict --ci`, `yarn install --immutable`, then `yarn dev`
 or `yarn build`. Development compiles once before starting Vite. Run
 `calcit calcit.cirru js -w` in another terminal for live Calcit edits; no process
 manager dependency is needed. Bit selection/counting now uses native Calcit operations.
