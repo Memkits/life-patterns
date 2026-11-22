@@ -591,9 +591,7 @@
           :code $ quote $ defn updater (store op op-id op-time)
             match op
               (:states cursor data)
-                assoc store :states $ decode-map-as
-                  respo.cursor/update-state-tree (:states store) cursor data
-                  Map respo.schema/CoordKey Dynamic
+                assoc store :states $ respo.cursor/update-state-map (:states store) cursor data
               (:filter edit)
                 let
                     states $ :states store
@@ -607,7 +605,7 @@
                           (:some n) (assoc data :filter-size n)
                           (:none) (assoc data :filter-size nil)
                       (:center center?) (assoc data :has-center? center?)
-                  assoc store :states $ decode-map-as (respo.cursor/update-state-tree states cursor next) (Map respo.schema/CoordKey Dynamic)
+                  assoc store :states $ respo.cursor/update-state-map states cursor next
               (:toggle index)
                 assoc store :code-array $ assoc (:code-array store) index $ not
                   .unwrap $ get (:code-array store) index
